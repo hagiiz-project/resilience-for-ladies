@@ -137,6 +137,9 @@ const CONFIG = {
   // 相談ログの送信先（Google Apps Script の /exec URL）。空なら端末内保存のみ。
   // 設定方法は docs/03_ログ収集_スプレッドシート.md を参照。
   LOG_ENDPOINT: "",
+  // AI（Gemini）中継サーバーのURL（Cloudflare Worker）。空ならAIは使わず監修文のみ。
+  // 設定方法は docs/05_中継サーバー_Cloudflare.md を参照。
+  AI_ENDPOINT: "",
   // 「そっと閉じる」で飛ぶ先。
   QUICK_EXIT_URL: "https://www.google.com/",
   // 知識ベースの場所（通常はこのまま）。
@@ -406,7 +409,7 @@ function renderChat(){
   return root;
 }
 
-function doSend(ta){
+async function doSend(ta){
   const t = String(ta.value||"").trim();
   if(!t || thinking) return;
   msgs.push({ role:"user", text:t });
@@ -414,11 +417,31 @@ function doSend(ta){
   const tp = match(t);
   record(tp.id, t);
   thinking = true; render();
+
+  // キーワードで特定できず（＝そのほか）、かつAI中継サーバーが設定されているときだけAIに聞く。
+  // 緊急・繊細なテーマは keywords で必ず監修文に当たるので、AIには回りません。
+  if (tp.id === "general" && CONFIG.AI_ENDPOINT){
+    try{
+      const res = await fetch(CONFIG.AI_ENDPOINT, {
+        method:"POST", headers:{ "Content-Type":"application/json" },
+        body: JSON.stringify({ text: t })
+      });
+      const data = await res.json();
+      const reply = data && data.reply ? String(data.reply) : "";
+      if(reply){
+        msgs.push({ role:"bot", text: teenize(reply), chips: chipsFor(FALLBACK.contacts) });
+        thinking = false; render(); return;
+      }
+    }catch(_){ /* 失敗時は下の監修フォールバックへ */ }
+  }
+
+  // 通常のシナリオ応答（監修文）。AIを使わないぶん、少しだけ間をおいて自然に見せる。
+  const delay = (tp.id === "general" && CONFIG.AI_ENDPOINT) ? 0 : 560;
   setTimeout(()=>{
     const r = compose(tp);
     msgs.push({ role:"bot", text:r.text, chips:r.chips });
     thinking = false; render();
-  }, 560);
+  }, delay);
 }
 
 function renderSheet(){
