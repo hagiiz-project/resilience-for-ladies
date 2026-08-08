@@ -9,7 +9,7 @@
 
 // ▼ここに、書き込み先スプレッドシートのIDを貼ってください（下の説明参照）▼
 // スプレッドシートのURL: https://docs.google.com/spreadsheets/d/【ここがID】/edit
-var SPREADSHEET_ID = 'https://docs.google.com/spreadsheets/d/1Lss3MYal0RuN0E0GJNOzxJC5WiYZ4lQ7kx_sQIZFmwo/edit';
+var SPREADSHEET_ID = '1Lss3MYal0RuN0E0GJNOzxJC5WiYZ4lQ7kx_sQIZFmwo;
 // ▲空のままだと、スクリプトに紐づくシートに書こうとします（紐づいていないと失敗します）▲
 
 // 相談ログを書き込むシート名
