@@ -155,8 +155,6 @@ const CONFIG = {
 };
 /* ▲▲▲ ここまで ▲▲▲ */
 
-
-
 /* --- 話し相手の設定（UI・めったに変えない） --- */
 const AGES = [
   { id:"es", label:"小中学生", teen:true },
@@ -213,7 +211,16 @@ let thinking = false;
 let userId = "";               // ログイン中の参加者ID
 let users = {};                // 端末内の参加者台帳 { id: {hash,gender,age,mbti,createdAt} }
 let loginError = "";           // 登録／ログイン画面のエラー表示
-let reg = { id:"", pw:"", pw2:"", gender:"", age:"", mbti:"" }; // 登録フォームの一時状態
+let reg = { id:"", pw:"", pw2:"", gender:"", ageNum:"", mbti:"" }; // 登録フォームの一時状態
+// 年齢(数値) → 話し相手の年代バンドへ変換（表示ロジック用。分析には数値の年齢を使います）
+function ageToBand(n){
+  n = parseInt(n,10);
+  if(!(n>0)) return "u25";
+  if(n<=15) return "es";
+  if(n<=18) return "hs";
+  if(n<=25) return "u25";
+  return "sh";
+}
 
 /* --- 便利関数 --- */
 const $ = (sel, root=document) => root.querySelector(sel);
@@ -372,7 +379,8 @@ async function doLogin(id, pass){
   if(h !== u.hash){ loginError = "パスワードが違います。"; render(); return; }
   userId = id; loginError = ""; saveCurrent();
   // 登録属性を話し相手の設定に反映（ログと紐づく）
-  if(u.age) persona.age = u.age;
+  if(u.ageNum) persona.age = ageToBand(u.ageNum);
+  else if(u.age) persona.age = u.age; // 旧アカウント（年代バンド）との後方互換
   if(u.mbti){ const m = MBTIS.find(x=>x.id===u.mbti); if(m){ persona.mbti=m.id; persona.style=m.style; persona.detail=m.detail; } }
   persist();
   msgs = [{ role:"bot", text:isTeen()?GREET.teen:GREET.adult }];
@@ -405,7 +413,9 @@ function renderRegister(){
   };
   wrap.append(
     field("性別", pill(GENDERS,"gender")),
-    field("年代", pill(AGES,"age")),
+    field("年齢", el("input",{type:"number", inputmode:"numeric", min:"8", max:"99",
+      placeholder:"例：17", value:reg.ageNum, style:inputStyle,
+      onInput:e=>reg.ageNum=e.target.value}), "半角数字で入力してください（分析に使います）。"),
     field("性格の傾向", pill(MBTIS,"mbti"), "返しの言葉づかい・長さの初期設定に使います（あとで変更可）。")
   );
   wrap.appendChild(el("button",{class:"primary", onClick:doRegister}, "登録してはじめる"));
@@ -420,15 +430,17 @@ async function doRegister(){
   if(users[id]){ loginError="このIDは既に使われています。別のIDにしてください。"; return render(); }
   if(String(reg.pw).length < 4){ loginError="パスワードは4文字以上にしてください。"; return render(); }
   if(reg.pw !== reg.pw2){ loginError="確認用パスワードが一致しません。"; return render(); }
-  if(!reg.gender || !reg.age || !reg.mbti){ loginError="性別・年代・性格をすべて選んでください。"; return render(); }
+  const ageNum = parseInt(reg.ageNum,10);
+  if(!(ageNum>=8 && ageNum<=99)){ loginError="年齢は半角数字（8〜99）で入力してください。"; return render(); }
+  if(!reg.gender || !reg.mbti){ loginError="性別・性格を選んでください。"; return render(); }
 
   const hash = await hashPass(id, reg.pw);
-  users[id] = { hash, gender:reg.gender, age:reg.age, mbti:reg.mbti, createdAt:new Date().toISOString() };
+  users[id] = { hash, gender:reg.gender, ageNum:ageNum, mbti:reg.mbti, createdAt:new Date().toISOString() };
   saveUsers();
   userId = id; saveCurrent();
 
-  // 話し相手の設定に反映
-  persona.age = reg.age;
+  // 話し相手の設定に反映（表示ロジックは年代バンド、分析には数値の年齢を使う）
+  persona.age = ageToBand(ageNum);
   const m = MBTIS.find(x=>x.id===reg.mbti); if(m){ persona.mbti=m.id; persona.style=m.style; persona.detail=m.detail; }
   persist();
 
@@ -437,10 +449,10 @@ async function doRegister(){
     try{ fetch(CONFIG.LOG_ENDPOINT, {
       method:"POST", mode:"no-cors", headers:{ "Content-Type":"text/plain;charset=utf-8" },
       body: JSON.stringify({ kind:"register", t:new Date().toISOString(),
-        id, gender:reg.gender, age:reg.age, mbti:reg.mbti })
+        id, gender:reg.gender, age:ageNum, mbti:reg.mbti })
     }); }catch(_){}
   }
-  reg = { id:"", pw:"", pw2:"", gender:"", age:"", mbti:"" };
+  reg = { id:"", pw:"", pw2:"", gender:"", ageNum:"", mbti:"" };
   msgs = [{ role:"bot", text:isTeen()?GREET.teen:GREET.adult }];
   view = "chat"; render();
 }
@@ -685,7 +697,8 @@ async function boot(){
     }
     // ログイン済み → 属性を反映してチャットへ
     const u = users[userId];
-    if(u.age) persona.age = u.age;
+    if(u.ageNum) persona.age = ageToBand(u.ageNum);
+    else if(u.age) persona.age = u.age;
     if(u.mbti){ const m = MBTIS.find(x=>x.id===u.mbti); if(m){ persona.mbti=m.id; persona.style=m.style; persona.detail=m.detail; } }
     view = "chat";
     if(!msgs.length) msgs = [{ role:"bot", text:isTeen()?GREET.teen:GREET.adult }];
