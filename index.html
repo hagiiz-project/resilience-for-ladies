@@ -140,12 +140,22 @@ const CONFIG = {
   // AI（Gemini）中継サーバーのURL（Cloudflare Worker）。空ならAIは使わず監修文のみ。
   // 設定方法は docs/05-cloudflare-worker.md を参照。
   AI_ENDPOINT: "https://crimson-sky-6f83.hagiiz-syde-project.workers.dev/",
+  // AIをどこまで使うか：
+  //   "fallback" … キーワード不一致（そのほか）のときだけAI。緊急・繊細は監修文。※既定・最も安全
+  //   "safe"     … 緊急テーマ以外はすべてAI。緊急（urgent）は必ず監修文で確定。※AI活用の推奨設定
+  //   "all"      … 緊急も含め、すべての入力をAIに回す。※AIの挙動をテストする用途のみ
+  AI_MODE: "fallback",
+  // 参加者登録（ID・パスワード）を必須にするか。true にすると最初に登録／ログイン画面が出ます。
+  // 参加者が自分でID・パスワード・属性を登録します（端末内で照合。詳細は docs/06-accounts.md）。
+  REQUIRE_ACCOUNT: true,
   // 「そっと閉じる」で飛ぶ先。
   QUICK_EXIT_URL: "https://www.google.com/",
   // 知識ベースの場所（通常はこのまま）。
   KNOWLEDGE_URL: "./knowledge.json"
 };
 /* ▲▲▲ ここまで ▲▲▲ */
+
+
 
 /* --- 話し相手の設定（UI・めったに変えない） --- */
 const AGES = [
@@ -171,6 +181,11 @@ const MBTIS = [
   { id:"sf", label:"現実・思いやり型（SF）", style:"together", detail:"normal" },
   { id:"st", label:"実務・堅実型（ST）", style:"plain", detail:"less" }
 ];
+/* 登録時に集める属性（最小限）。値はスプレッドシートの「参加者」シートに記録されます。 */
+const GENDERS = [
+  { id:"f", label:"女性" }, { id:"m", label:"男性" },
+  { id:"x", label:"その他" }, { id:"na", label:"答えない" }
+];
 const GREET = {
   teen:"こんにちは。ここは、なまえを書かなくてもだいじょうぶな場所です。気になっていること、こわいと思っていること、どんなに小さなことでも書いてみてください。",
   adult:"こんにちは。匿名でご相談いただけます。避難所や日常での不安、困っていることをそのまま書いてください。"
@@ -195,6 +210,10 @@ let noHistory = false;
 let log = [];                  // 相談ログ（この端末）
 let msgs = [];                 // チャット表示
 let thinking = false;
+let userId = "";               // ログイン中の参加者ID
+let users = {};                // 端末内の参加者台帳 { id: {hash,gender,age,mbti,createdAt} }
+let loginError = "";           // 登録／ログイン画面のエラー表示
+let reg = { id:"", pw:"", pw2:"", gender:"", age:"", mbti:"" }; // 登録フォームの一時状態
 
 /* --- 便利関数 --- */
 const $ = (sel, root=document) => root.querySelector(sel);
@@ -272,6 +291,7 @@ function compose(tp){
 function record(topicId, text){
   const e = {
     t: new Date().toISOString(),
+    user: userId,
     topic: topicId,
     age: persona.age, style: persona.style, detail: persona.detail, mbti: persona.mbti,
     text: noHistory ? "" : text
@@ -291,10 +311,10 @@ function record(topicId, text){
 
 function exportCsv(){
   const esc = v => '"' + String(v==null?"":v).replace(/"/g,'""') + '"';
-  const header = ["送信時刻","相談の種類","年代設定","返しの種類","情報量","本文"].map(esc).join(",");
+  const header = ["送信時刻","参加者ID","相談の種類","年代設定","返しの種類","情報量","本文"].map(esc).join(",");
   const rows = [header].concat(log.map(e=>{
     const tp = TOPICS.find(x=>x.id===e.topic);
-    return [e.t, tp?tp.label:e.topic, e.age, e.style, e.detail, e.text].map(esc).join(",");
+    return [e.t, e.user||"", tp?tp.label:e.topic, e.age, e.style, e.detail, e.text].map(esc).join(",");
   }));
   const blob = new Blob(["\uFEFF"+rows.join("\r\n")], { type:"text/csv;charset=utf-8" });
   const a = el("a", { href:URL.createObjectURL(blob), download:"bosai-soudan-log.csv" });
@@ -302,15 +322,133 @@ function exportCsv(){
 }
 
 /* --- 画面描画 --- */
-let view = "chat"; // "setup" | "chat"
+let view = "chat"; // "login" | "setup" | "chat"
 let sheet = null;  // null | "menu" | "feedback" | "contacts"
 
 function render(){
   const app = $("#app");
   app.innerHTML = "";
+  if (view === "login")    { app.appendChild(renderLogin()); return; }
+  if (view === "register") { app.appendChild(renderRegister()); return; }
   if (view === "setup") app.appendChild(renderSetup());
   else app.appendChild(renderChat());
   if (sheet) app.appendChild(renderSheet());
+}
+
+/* --- 参加者アカウント（自己登録・端末内でハッシュ照合） --- */
+const inputStyle = "width:100%;border:1px solid var(--line);border-radius:12px;padding:12px;font-size:15px;margin:0 0 10px;background:var(--panel)";
+
+// パスワードは平文で持たず、SHA-256ハッシュにして扱う（スプレッドシートにも送りません）。
+async function hashPass(id, pw){
+  const data = new TextEncoder().encode(id + ":" + pw);
+  const buf = await crypto.subtle.digest("SHA-256", data);
+  return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,"0")).join("");
+}
+function saveUsers(){ try{ localStorage.setItem("bgj_users_v2", JSON.stringify(users)); }catch(_){} }
+function saveCurrent(){ try{ localStorage.setItem("bgj_current_v2", userId||""); }catch(_){} }
+
+function renderLogin(){
+  const wrap = el("div",{class:"setup"});
+  wrap.append(
+    el("h1",{},"ログイン"),
+    el("p",{class:"lead"},"登録したIDとパスワードでログインしてください。はじめての方は下の「新規登録」から。")
+  );
+  if(loginError) wrap.appendChild(el("div",{class:"banner"}, loginError));
+  const idIn = el("input",{type:"text", placeholder:"ID", autocomplete:"username", style:inputStyle});
+  const pwIn = el("input",{type:"password", placeholder:"パスワード", autocomplete:"current-password", style:inputStyle,
+    onKeydown:(e)=>{ if(e.key==="Enter") doLogin(idIn.value, pwIn.value); }});
+  wrap.append(idIn, pwIn);
+  wrap.appendChild(el("button",{class:"primary", onClick:()=>doLogin(idIn.value, pwIn.value)}, "ログイン"));
+  wrap.appendChild(el("button",{class:"ghost", onClick:()=>{ loginError=""; view="register"; render(); }}, "新規登録はこちら"));
+  return wrap;
+}
+
+async function doLogin(id, pass){
+  id = String(id||"").trim(); pass = String(pass||"");
+  if(!id || !pass){ loginError = "IDとパスワードを入力してください。"; render(); return; }
+  const u = users[id];
+  if(!u){ loginError = "このIDは登録されていません。新規登録してください。"; render(); return; }
+  const h = await hashPass(id, pass);
+  if(h !== u.hash){ loginError = "パスワードが違います。"; render(); return; }
+  userId = id; loginError = ""; saveCurrent();
+  // 登録属性を話し相手の設定に反映（ログと紐づく）
+  if(u.age) persona.age = u.age;
+  if(u.mbti){ const m = MBTIS.find(x=>x.id===u.mbti); if(m){ persona.mbti=m.id; persona.style=m.style; persona.detail=m.detail; } }
+  persist();
+  msgs = [{ role:"bot", text:isTeen()?GREET.teen:GREET.adult }];
+  view = "chat"; render();
+}
+
+function renderRegister(){
+  const wrap = el("div",{class:"setup"});
+  wrap.append(
+    el("h1",{},"新規登録"),
+    el("p",{class:"lead"},"ご自身で決めたID・パスワードと、かんたんな属性を登録してください。名前・メール・電話番号は登録しません。")
+  );
+  if(loginError) wrap.appendChild(el("div",{class:"banner"}, loginError));
+
+  const idIn = el("input",{type:"text", placeholder:"ID（半角英数字・4文字以上）", autocomplete:"username", value:reg.id,
+    style:inputStyle, onInput:e=>reg.id=e.target.value});
+  const pwIn = el("input",{type:"password", placeholder:"パスワード（4文字以上）", autocomplete:"new-password", value:reg.pw,
+    style:inputStyle, onInput:e=>reg.pw=e.target.value});
+  const pw2In = el("input",{type:"password", placeholder:"パスワード（確認）", autocomplete:"new-password", value:reg.pw2,
+    style:inputStyle, onInput:e=>reg.pw2=e.target.value});
+  wrap.append(field("ID・パスワード", (()=>{ const b=el("div"); b.append(idIn,pwIn,pw2In); return b; })()));
+
+  const pill = (list, key) => {
+    const box = el("div",{class:"opts"});
+    list.forEach(o=>{
+      box.appendChild(el("button",{class:"opt"+(reg[key]===o.id?" on":""),
+        onClick:()=>{ reg[key]=o.id; render(); }}, o.label));
+    });
+    return box;
+  };
+  wrap.append(
+    field("性別", pill(GENDERS,"gender")),
+    field("年代", pill(AGES,"age")),
+    field("性格の傾向", pill(MBTIS,"mbti"), "返しの言葉づかい・長さの初期設定に使います（あとで変更可）。")
+  );
+  wrap.appendChild(el("button",{class:"primary", onClick:doRegister}, "登録してはじめる"));
+  wrap.appendChild(el("button",{class:"ghost", onClick:()=>{ loginError=""; view="login"; render(); }}, "ログインに戻る"));
+  return wrap;
+}
+
+async function doRegister(){
+  const id = String(reg.id||"").trim();
+  loginError = "";
+  if(!/^[A-Za-z0-9_-]{4,}$/.test(id)){ loginError="IDは半角英数字4文字以上で入力してください。"; return render(); }
+  if(users[id]){ loginError="このIDは既に使われています。別のIDにしてください。"; return render(); }
+  if(String(reg.pw).length < 4){ loginError="パスワードは4文字以上にしてください。"; return render(); }
+  if(reg.pw !== reg.pw2){ loginError="確認用パスワードが一致しません。"; return render(); }
+  if(!reg.gender || !reg.age || !reg.mbti){ loginError="性別・年代・性格をすべて選んでください。"; return render(); }
+
+  const hash = await hashPass(id, reg.pw);
+  users[id] = { hash, gender:reg.gender, age:reg.age, mbti:reg.mbti, createdAt:new Date().toISOString() };
+  saveUsers();
+  userId = id; saveCurrent();
+
+  // 話し相手の設定に反映
+  persona.age = reg.age;
+  const m = MBTIS.find(x=>x.id===reg.mbti); if(m){ persona.mbti=m.id; persona.style=m.style; persona.detail=m.detail; }
+  persist();
+
+  // 参加者情報をスプレッドシートへ（IDと属性のみ・パスワードは送りません）
+  if(CONFIG.LOG_ENDPOINT){
+    try{ fetch(CONFIG.LOG_ENDPOINT, {
+      method:"POST", mode:"no-cors", headers:{ "Content-Type":"text/plain;charset=utf-8" },
+      body: JSON.stringify({ kind:"register", t:new Date().toISOString(),
+        id, gender:reg.gender, age:reg.age, mbti:reg.mbti })
+    }); }catch(_){}
+  }
+  reg = { id:"", pw:"", pw2:"", gender:"", age:"", mbti:"" };
+  msgs = [{ role:"bot", text:isTeen()?GREET.teen:GREET.adult }];
+  view = "chat"; render();
+}
+
+function logout(){
+  userId = ""; saveCurrent();
+  msgs = []; sheet = null; loginError = "";
+  view = "login"; render();
 }
 
 function renderSetup(){
@@ -418,9 +556,16 @@ async function doSend(ta){
   record(tp.id, t);
   thinking = true; render();
 
-  // キーワードで特定できず（＝そのほか）、かつAI中継サーバーが設定されているときだけAIに聞く。
-  // 緊急・繊細なテーマは keywords で必ず監修文に当たるので、AIには回りません。
-  if (tp.id === "general" && CONFIG.AI_ENDPOINT){
+  // AIを呼ぶか判定（CONFIG.AI_MODE による）。
+  //  fallback：不一致(そのほか)のみ／safe：緊急以外はAI／all：全部AI
+  let useAI = false;
+  if (CONFIG.AI_ENDPOINT){
+    if (CONFIG.AI_MODE === "all")        useAI = true;
+    else if (CONFIG.AI_MODE === "safe")  useAI = !tp.urgent;
+    else /* "fallback" */                useAI = (tp.id === "general");
+  }
+
+  if (useAI){
     try{
       const res = await fetch(CONFIG.AI_ENDPOINT, {
         method:"POST", headers:{ "Content-Type":"application/json" },
@@ -429,14 +574,15 @@ async function doSend(ta){
       const data = await res.json();
       const reply = data && data.reply ? String(data.reply) : "";
       if(reply){
-        msgs.push({ role:"bot", text: teenize(reply), chips: chipsFor(FALLBACK.contacts) });
+        const cc = (tp.contacts && tp.contacts.length) ? tp.contacts : FALLBACK.contacts;
+        msgs.push({ role:"bot", text: teenize(reply), chips: chipsFor(cc) });
         thinking = false; render(); return;
       }
     }catch(_){ /* 失敗時は下の監修フォールバックへ */ }
   }
 
-  // 通常のシナリオ応答（監修文）。AIを使わないぶん、少しだけ間をおいて自然に見せる。
-  const delay = (tp.id === "general" && CONFIG.AI_ENDPOINT) ? 0 : 560;
+  // 監修文の応答。AIを使わないぶん、少しだけ間をおいて自然に見せる。
+  const delay = useAI ? 0 : 560;
   setTimeout(()=>{
     const r = compose(tp);
     msgs.push({ role:"bot", text:r.text, chips:r.chips });
@@ -448,11 +594,12 @@ function renderSheet(){
   const bg = el("div",{class:"sheet-bg", onClick:(e)=>{ if(e.target===bg){ sheet=null; render(); } }});
   const s = el("div",{class:"sheet"});
   if(sheet==="menu"){
-    s.append(el("h2",{},"設定"), el("p",{class:"desc"},"いつでも変えられます。書いた内容はこの端末の中にあります。"));
+    s.append(el("h2",{},"設定"), el("p",{class:"desc"}, (userId?("ログイン中："+userId+"　"):"")+"いつでも変えられます。書いた内容はこの端末の中にあります。"));
     s.appendChild(rowcard("話し相手の設定を変える","年代・返しの種類・情報量","変える",()=>{ sheet=null; view="setup"; render(); }));
     s.appendChild(rowcard("相談ログを書き出す","運営用・記録 "+log.length+"件","CSV",()=>exportCsv()));
     s.appendChild(rowcard("感想・改善を送る","テスト協力者からの声","書く",()=>{ sheet="feedback"; render(); }));
     s.appendChild(rowcard("書いたものを今すぐ消す","この端末の記録をすべて削除","消す",clearHistory,true));
+    if(CONFIG.REQUIRE_ACCOUNT) s.appendChild(rowcard("ログアウト","別のIDで入り直す","出る",()=>{ sheet=null; logout(); }));
   } else if(sheet==="feedback"){
     s.append(el("h2",{},"感想・改善を送る"),
       el("p",{class:"desc"}, CONFIG.LOG_ENDPOINT ? "運営に届きます。" : "送信先が未設定のため、いまは端末内に保存されます。"));
@@ -524,7 +671,28 @@ async function boot(){
   }
   // Esc で即離脱
   window.addEventListener("keydown", (e)=>{ if(e.key==="Escape") quickExit(); });
-  // 初回は設定画面、2回目以降はチャットへ
+
+  // 参加者台帳・ログイン状態を復元
+  try{ users = JSON.parse(localStorage.getItem("bgj_users_v2")||"{}") || {}; }catch(_){ users={}; }
+  try{ userId = localStorage.getItem("bgj_current_v2")||""; }catch(_){ userId=""; }
+
+  // 参加者登録が必須のとき：未ログインなら登録／ログイン画面へ
+  if (CONFIG.REQUIRE_ACCOUNT){
+    if(!userId || !users[userId]){
+      userId = "";
+      view = Object.keys(users).length ? "login" : "register"; // 台帳が空なら先に登録画面
+      render(); return;
+    }
+    // ログイン済み → 属性を反映してチャットへ
+    const u = users[userId];
+    if(u.age) persona.age = u.age;
+    if(u.mbti){ const m = MBTIS.find(x=>x.id===u.mbti); if(m){ persona.mbti=m.id; persona.style=m.style; persona.detail=m.detail; } }
+    view = "chat";
+    if(!msgs.length) msgs = [{ role:"bot", text:isTeen()?GREET.teen:GREET.adult }];
+    render(); return;
+  }
+
+  // アカウント不要の運用：初回は設定画面、2回目以降はチャットへ
   const seen = !!localStorage.getItem("bgj_app_v2");
   view = seen ? "chat" : "setup";
   if(view==="chat" && !msgs.length) msgs = [{ role:"bot", text:isTeen()?GREET.teen:GREET.adult }];
