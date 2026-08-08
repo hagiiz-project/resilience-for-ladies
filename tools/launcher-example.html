@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>相談窓口のご案内</title>
+</head>
+<body style="font-family:sans-serif; max-width:480px; margin:40px auto; padding:0 16px; line-height:1.9;">
+  <h1 style="font-size:20px;">相談窓口のご案内</h1>
+  <p>下のボタンから相談窓口を開いてください。ここからでないと入れない仕組みです。</p>
+
+  <button id="go" style="border:none;background:#B5432E;color:#fff;border-radius:12px;padding:14px 20px;font-size:16px;font-weight:700;cursor:pointer;">
+    相談窓口を開く
+  </button>
+  <p id="msg" style="color:#a00;"></p>
+
+<script>
+  // ▼ 2か所を自分の値に
+  const RELAY = "https://soudan-relay.YOUR-SUBDOMAIN.workers.dev"; // 中継サーバーのURL
+  const APP   = "https://YOUR-NAME.github.io/soudan-app/";        // アプリの公開URL
+  // ▲
+
+  document.getElementById("go").addEventListener("click", async () => {
+    const msg = document.getElementById("msg");
+    msg.textContent = "";
+    try {
+      // このページ(指定サイト)から入口チケットを取得。ブラウザがOriginを付けるので、
+      // 中継サーバーは「このサイトから来た」ことを確認できます。
+      const res = await fetch(RELAY + "/ticket", { method: "POST" });
+      const data = await res.json();
+      if (!data.ticket) throw new Error("no ticket");
+      // チケット付きでアプリへ。チケットは短時間で失効します。
+      location.href = APP + "?t=" + encodeURIComponent(data.ticket);
+    } catch (e) {
+      msg.textContent = "いま開けませんでした。時間をおいて、もう一度お試しください。";
+    }
+  });
+</script>
+</body>
+</html>

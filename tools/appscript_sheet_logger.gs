@@ -11,6 +11,8 @@
 var LOG_SHEET = 'ログ';
 // 感想・改善を書き込むシート名
 var FB_SHEET  = '感想';
+// 参加者（ID↔属性）を書き込むシート名
+var PT_SHEET  = '参加者';
 
 function doPost(e) {
   try {
@@ -20,12 +22,24 @@ function doPost(e) {
     if (data.kind === 'feedback') {
       var fb = getOrCreateSheet_(ss, FB_SHEET, ['受信日時', '感想・改善']);
       fb.appendRow([new Date(), String(data.text || '')]);
+    } else if (data.kind === 'register') {
+      // 参加者登録：ID＋属性のみ（パスワードは受け取りません）
+      var pt = getOrCreateSheet_(ss, PT_SHEET,
+        ['登録日時', '参加者ID', '性別', '年代', '性格(MBTI)']);
+      pt.appendRow([
+        new Date(),
+        String(data.id || ''),
+        String(data.gender || ''),
+        String(data.age || ''),
+        String(data.mbti || '')
+      ]);
     } else {
       // kind === 'log'（既定）
       var log = getOrCreateSheet_(ss, LOG_SHEET,
-        ['受信日時', '相談の種類', '年代設定', '返しの種類', '情報量', '本文']);
+        ['受信日時', '参加者ID', '相談の種類', '年代設定', '返しの種類', '情報量', '本文']);
       log.appendRow([
         new Date(),
+        String(data.user || ''),
         String(data.topic || ''),
         String(data.age || ''),
         String(data.style || ''),
