@@ -139,7 +139,7 @@ const CONFIG = {
   LOG_ENDPOINT: "",
   // AI（Gemini）中継サーバーのURL（Cloudflare Worker）。空ならAIは使わず監修文のみ。
   // 設定方法は docs/05-cloudflare-worker.md を参照。
-  AI_ENDPOINT: "",
+  AI_ENDPOINT: "all",
   // AIをどこまで使うか：
   //   "fallback" … キーワード不一致（そのほか）のときだけAI。緊急・繊細は監修文。※既定・最も安全
   //   "safe"     … 緊急テーマ以外はすべてAI。緊急（urgent）は必ず監修文で確定。※AI活用の推奨設定
