@@ -28,9 +28,20 @@
   html,body{height:100%}
   body{
     margin:0; background:var(--bg); color:var(--ink);
-    font-family:"Zen Kaku Gothic New", system-ui, sans-serif;
+    font-family:var(--font, "Zen Kaku Gothic New", system-ui, sans-serif);
+    font-size:calc(16px * var(--scale, 1));
     -webkit-font-smoothing:antialiased; text-wrap:pretty;
+    transition:background .2s ease, color .2s ease;
   }
+  /* 質感（背景の模様）。design.json の「質感」で切り替わります */
+  body.tex-dot{background-image:radial-gradient(var(--line) 1px, transparent 1.2px); background-size:14px 14px}
+  body.tex-kougo{background-image:
+    repeating-linear-gradient(0deg,var(--line) 0 1px,transparent 1px 28px),
+    repeating-linear-gradient(90deg,var(--line) 0 1px,transparent 1px 28px)}
+  body.tex-kami{background-image:
+    radial-gradient(circle at 20% 30%,var(--line) .6px,transparent .7px),
+    radial-gradient(circle at 70% 65%,var(--line) .5px,transparent .6px);
+    background-size:13px 13px,19px 19px}
   button{font-family:inherit; cursor:pointer}
   input,textarea,select{font-family:inherit}
   @keyframes riseIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
@@ -132,27 +143,44 @@
    - 相談の「中身」は knowledge.json 側にあります（コードと分離）。
    ============================================================ */
 
-/* ▼▼▼ 運営が設定する場所（ここだけ触れば動きます） ▼▼▼ */
+/* ▼▼▼ 設定は settings.json / design.json にあります（このコードは触らなくて大丈夫） ▼▼▼
+   変えたいときは、同じフォルダの settings.json と design.json を編集してください。
+   読み込みに失敗したときだけ、下の既定値で動きます。 */
+const FILES = { settings: "./settings.json", design: "./design.json" };
+
 const CONFIG = {
-  // 相談ログの送信先（Google Apps Script の /exec URL）。空なら端末内保存のみ。
-  // 設定方法は docs/03-logging-sheets.md を参照。
   LOG_ENDPOINT: "",
-  // AI（Gemini）中継サーバーのURL（Cloudflare Worker）。空ならAIは使わず監修文のみ。
-  // 設定方法は docs/05-cloudflare-worker.md を参照。
-  AI_ENDPOINT: "https://crimson-sky-6f83.hagiiz-syde-project.workers.dev",
-  // AIをどこまで使うか：
-  //   "fallback" … キーワード不一致（そのほか）のときだけAI。緊急・繊細は監修文。※既定・最も安全
-  //   "safe"     … 緊急テーマ以外はすべてAI。緊急（urgent）は必ず監修文で確定。※AI活用の推奨設定
-  //   "all"      … 緊急も含め、すべての入力をAIに回す。※AIの挙動をテストする用途のみ
-  AI_MODE: "all",
-  // 参加者登録（ID・パスワード）を必須にするか。true にすると最初に登録／ログイン画面が出ます。
-  // 参加者が自分でID・パスワード・属性を登録します（端末内で照合。詳細は docs/06-accounts.md）。
+  AI_ENDPOINT: "",
+  AI_MODE: "fallback",
   REQUIRE_ACCOUNT: true,
-  // 「そっと閉じる」で飛ぶ先。
   QUICK_EXIT_URL: "https://www.google.com/",
-  // 知識ベースの場所（通常はこのまま）。
   KNOWLEDGE_URL: "./knowledge.json"
 };
+let SETTINGS = null, DESIGN = null;
+
+/* settings.json / design.json を読み込んで CONFIG に反映 */
+async function loadFiles(){
+  try{
+    SETTINGS = await (await fetch(FILES.settings, { cache:"no-store" })).json();
+    const c = SETTINGS["接続先"] || {}, a = SETTINGS["AIの使い方"] || {}, p = SETTINGS["参加者登録"] || {};
+    if(c["AI中継サーバー"] !== undefined)        CONFIG.AI_ENDPOINT  = c["AI中継サーバー"];
+    if(c["記録先スプレッドシート"] !== undefined) CONFIG.LOG_ENDPOINT = c["記録先スプレッドシート"];
+    if(c["そっと閉じる飛び先"])                  CONFIG.QUICK_EXIT_URL = c["そっと閉じる飛び先"];
+    if(a["範囲"])                                CONFIG.AI_MODE = a["範囲"];
+    if(p["必須にする"] !== undefined)            CONFIG.REQUIRE_ACCOUNT = !!p["必須にする"];
+  }catch(_){ SETTINGS = null; }
+  try{
+    DESIGN = await (await fetch(FILES.design, { cache:"no-store" })).json();
+  }catch(_){ DESIGN = null; }
+}
+
+/* design.json の一覧（読めなければ最小限の既定） */
+const THEMES   = () => (DESIGN && DESIGN["テーマ"] && DESIGN["テーマ"]["一覧"]) || [{ id:"momo", "名前":"ももソーダ", bg:"#FFF0F5", accent:"#FF4F87" }];
+const FONTS    = () => (DESIGN && DESIGN["書体"] && DESIGN["書体"]["一覧"]) || [{ id:"gothic", "名前":"ゴシック", stack:'"Zen Kaku Gothic New",sans-serif' }];
+const TEXTURES = () => (DESIGN && DESIGN["質感"] && DESIGN["質感"]["一覧"]) || [{ id:"flat", "名前":"フラット" }];
+const SIZES    = () => (DESIGN && DESIGN["文字サイズ"] && DESIGN["文字サイズ"]["一覧"]) || [{ id:"m", "名前":"ふつう", "倍率":1 }];
+const WORD     = (k, def) => (DESIGN && DESIGN["画面の言葉"] && DESIGN["画面の言葉"][k]) || def;
+const CONTACTS_LIST = () => (SETTINGS && SETTINGS["相談先"] && SETTINGS["相談先"]["一覧"]) || [];
 /* ▲▲▲ ここまで ▲▲▲ */
 
 /* --- 話し相手の設定（UI・めったに変えない） --- */
@@ -212,6 +240,61 @@ let userId = "";               // ログイン中の参加者ID
 let users = {};                // 端末内の参加者台帳 { id: {hash,gender,age,mbti,createdAt} }
 let loginError = "";           // 登録／ログイン画面のエラー表示
 let reg = { id:"", pw:"", pw2:"", gender:"", ageNum:"", mbti:"" }; // 登録フォームの一時状態
+/* 見た目の設定（参加者ごとに端末内で記憶） */
+let look = { theme:"momo", font:"maru", texture:"flat", size:"m" };
+
+/* ---- 色の自動計算：背景色とアクセント色の2色から、全部の色を作る ---- */
+function hex2rgb(h){ h=String(h).replace("#","");
+  if(h.length===3) h=h[0]+h[0]+h[1]+h[1]+h[2]+h[2];
+  return [parseInt(h.slice(0,2),16),parseInt(h.slice(2,4),16),parseInt(h.slice(4,6),16)]; }
+function rgb2hex(r){ return "#"+r.map(v=>Math.max(0,Math.min(255,Math.round(v))).toString(16).padStart(2,"0")).join(""); }
+function mixc(a,b,t){ const x=hex2rgb(a),y=hex2rgb(b); return rgb2hex([0,1,2].map(i=>x[i]+(y[i]-x[i])*t)); }
+function lum(h){ const c=hex2rgb(h).map(v=>{ v/=255; return v<=.03928? v/12.92 : Math.pow((v+.055)/1.055,2.4); });
+  return .2126*c[0]+.7152*c[1]+.0722*c[2]; }
+function onColor(c){ return lum(c)>0.5 ? "#1A1A1A" : "#FFFFFF"; }
+function rotateHue(h,deg){
+  const c=hex2rgb(h), r=c[0]/255,g=c[1]/255,b=c[2]/255;
+  const mx=Math.max(r,g,b), mn=Math.min(r,g,b), d=mx-mn; let hh=0;
+  if(d){ hh = mx===r ? ((g-b)/d+(g<b?6:0)) : mx===g ? ((b-r)/d+2) : ((r-g)/d+4); hh*=60; }
+  const l=(mx+mn)/2, s=d? d/(1-Math.abs(2*l-1)) : 0;
+  hh=(hh+deg+360)%360;
+  const C=(1-Math.abs(2*l-1))*s, X=C*(1-Math.abs((hh/60)%2-1)), m=l-C/2; let p;
+  if(hh<60)p=[C,X,0]; else if(hh<120)p=[X,C,0]; else if(hh<180)p=[0,C,X];
+  else if(hh<240)p=[0,X,C]; else if(hh<300)p=[X,0,C]; else p=[C,0,X];
+  return rgb2hex([(p[0]+m)*255,(p[1]+m)*255,(p[2]+m)*255]);
+}
+function applyLook(){
+  const t = THEMES().find(x=>x.id===look.theme) || THEMES()[0];
+  const dark = lum(t.bg) < 0.35, far = dark ? "#FFFFFF" : "#000000";
+  const ac = t.accent, ac2 = rotateHue(ac,-40);
+  const P = {
+    "--bg": t.bg,
+    "--panel": mixc(t.bg, far, dark?0.07:0.02),
+    "--ink": mixc(t.bg, far, dark?0.93:0.87),
+    "--ink-2": mixc(t.bg, far, dark?0.72:0.62),
+    "--ink-3": mixc(t.bg, far, 0.45),
+    "--line": mixc(t.bg, far, dark?0.20:0.13),
+    "--accent": ac,
+    "--accent-d": mixc(ac, far, 0.25),
+    "--bot": mixc(t.bg, far, dark?0.10:0.045),
+    "--user": ac,
+    "--warn-bg": mixc(t.bg, ac, 0.10),
+    "--warn-line": mixc(t.bg, ac, 0.28),
+    "--on-accent": onColor(ac),
+    "--accent2": ac2
+  };
+  const r = document.documentElement.style;
+  Object.keys(P).forEach(k => r.setProperty(k, P[k]));
+  const f = FONTS().find(x=>x.id===look.font) || FONTS()[0];
+  r.setProperty("--font", f.stack);
+  const sz = SIZES().find(x=>x.id===look.size) || SIZES()[1] || SIZES()[0];
+  r.setProperty("--scale", String(sz["倍率"] || 1));
+  document.body.className = "tex-" + look.texture;
+}
+function saveLook(){ try{ localStorage.setItem("bgj_look_"+(userId||"_"), JSON.stringify(look)); }catch(_){} }
+function loadLook(){
+  try{ const o=JSON.parse(localStorage.getItem("bgj_look_"+(userId||"_"))||"null"); if(o) look=Object.assign(look,o); }catch(_){}
+}
 // 年齢(数値) → 話し相手の年代バンドへ変換（表示ロジック用。分析には数値の年齢を使います）
 function ageToBand(n){
   n = parseInt(n,10);
@@ -235,21 +318,45 @@ const el = (tag, attrs={}, kids=[]) => {
   (Array.isArray(kids)?kids:[kids]).forEach(c => c!=null && n.appendChild(typeof c==="string"?document.createTextNode(c):c));
   return n;
 };
+/* 年齢から「ことばの段階」を決める（settings.json の「年齢ごとのことば」） */
+function levelOf(){
+  const u = users[userId];
+  const n = u && u.ageNum ? parseInt(u.ageNum,10) : (persona.age==="es"?12:persona.age==="hs"?17:30);
+  const steps = (SETTINGS && SETTINGS["年齢ごとのことば"] && SETTINGS["年齢ごとのことば"]["段階"]) || [];
+  for(const st of steps){ if(n <= (st["上限年齢"]||99)) return st["名前"] || "adult"; }
+  return n<=12 ? "kids" : n<=18 ? "teen" : "adult";
+}
+function greetText(){
+  const g = (DESIGN && DESIGN["あいさつ"]) || {};
+  const lv = levelOf();
+  return g[lv] || (lv==="adult" ? GREET.adult : GREET.teen);
+}
+function readings(){
+  return (DESIGN && DESIGN["ふりがな"] && DESIGN["ふりがな"]["一覧"]) || READINGS;
+}
+
 const isTeen = () => { const a = AGES.find(x=>x.id===persona.age); return !!(a && a.teen); };
 const chipsFor = (contactIds=[]) =>
   (contactIds||[]).map(id => CONTACTS[id]).filter(Boolean)
     .map(c => c.number + (c.label ? "（"+c.label+"）" : "")).join("　");
 
 function teenize(t){
-  if(!isTeen()) return t;
+  const lv = levelOf();
+  if(lv === "adult") return t;      // 大人はそのまま
   let out = t;
-  READINGS.forEach(([a,b])=>{ const i=out.indexOf(a); if(i>=0) out = out.slice(0,i)+b+out.slice(i+a.length); });
+  readings().forEach(([a,b])=>{ const i=out.indexOf(a); if(i>=0) out = out.slice(0,i)+b+out.slice(i+a.length); });
   return out;
 }
 
 /* knowledge.json の chunk を、アプリが使う形に正規化 */
 function normalize(kb){
   CONTACTS = kb.contacts || {};
+  // settings.json に相談先があれば、そちらを優先（1か所で管理できる）
+  const list = CONTACTS_LIST();
+  if(list.length){
+    CONTACTS = {};
+    list.forEach((c,i)=>{ CONTACTS["c"+i] = { label:c["名前"], number:c["番号"], tel:c["発信先"]||c["番号"] }; });
+  }
   TOPICS = (kb.chunks || []).map(c => ({
     id:c.id, label:c.title, kw:c.keywords || [], urgent:!!c.urgent,
     emp:c.empathy || {}, steps:c.steps || [], contacts:c.contacts || [], body:c.body || ""
@@ -378,12 +485,13 @@ async function doLogin(id, pass){
   const h = await hashPass(id, pass);
   if(h !== u.hash){ loginError = "パスワードが違います。"; render(); return; }
   userId = id; loginError = ""; saveCurrent();
+  loadLook(); applyLook();
   // 登録属性を話し相手の設定に反映（ログと紐づく）
   if(u.ageNum) persona.age = ageToBand(u.ageNum);
   else if(u.age) persona.age = u.age; // 旧アカウント（年代バンド）との後方互換
   if(u.mbti){ const m = MBTIS.find(x=>x.id===u.mbti); if(m){ persona.mbti=m.id; persona.style=m.style; persona.detail=m.detail; } }
   persist();
-  msgs = [{ role:"bot", text:isTeen()?GREET.teen:GREET.adult }];
+  msgs = [{ role:"bot", text:greetText() }];
   view = "chat"; render();
 }
 
@@ -438,6 +546,7 @@ async function doRegister(){
   users[id] = { hash, gender:reg.gender, ageNum:ageNum, mbti:reg.mbti, createdAt:new Date().toISOString() };
   saveUsers();
   userId = id; saveCurrent();
+  loadLook(); applyLook();
 
   // 話し相手の設定に反映（表示ロジックは年代バンド、分析には数値の年齢を使う）
   persona.age = ageToBand(ageNum);
@@ -453,7 +562,7 @@ async function doRegister(){
     }); }catch(_){}
   }
   reg = { id:"", pw:"", pw2:"", gender:"", ageNum:"", mbti:"" };
-  msgs = [{ role:"bot", text:isTeen()?GREET.teen:GREET.adult }];
+  msgs = [{ role:"bot", text:greetText() }];
   view = "chat"; render();
 }
 
@@ -505,7 +614,7 @@ function field(q, node, note){
 
 function startChat(){
   persist();
-  if (!msgs.length) msgs = [{ role:"bot", text:isTeen()?GREET.teen:GREET.adult }];
+  if (!msgs.length) msgs = [{ role:"bot", text:greetText() }];
   view = "chat"; render();
 }
 
@@ -518,9 +627,10 @@ function renderChat(){
     (()=>{ const d=el("div"); d.append(el("div",{class:"name"},"相談の窓口"),
       el("div",{class:"sub"}, noHistory ? "本文は残していません" : "匿名・この端末の中だけに記録")); return d; })(),
     el("div",{class:"spacer"}),
-    el("button",{class:"iconbtn", onClick:()=>{ sheet="contacts"; render(); }}, "相談先"),
-    el("button",{class:"iconbtn", onClick:()=>{ sheet="menu"; render(); }}, "設定"),
-    el("button",{class:"exitbtn", title:"すぐに別の画面へ移動します", onClick:quickExit}, "そっと閉じる")
+    el("button",{class:"iconbtn", onClick:()=>{ sheet="contacts"; render(); }}, WORD("相談先ボタン","相談先")),
+    el("button",{class:"iconbtn", onClick:()=>{ sheet="look"; render(); }}, "色"),
+    el("button",{class:"iconbtn", onClick:()=>{ sheet="menu"; render(); }}, WORD("設定ボタン","設定")),
+    el("button",{class:"exitbtn", title:"すぐに別の画面へ移動します", onClick:quickExit}, WORD("そっと閉じる","そっと閉じる"))
   );
   // チャット
   const scroll = el("div",{class:"scroll", id:"scroll"});
@@ -581,7 +691,7 @@ async function doSend(ta){
     try{
       const res = await fetch(CONFIG.AI_ENDPOINT, {
         method:"POST", headers:{ "Content-Type":"application/json" },
-        body: JSON.stringify({ text: t })
+        body: JSON.stringify({ text: t, level: levelOf() })
       });
       const data = await res.json();
       const reply = data && data.reply ? String(data.reply) : "";
@@ -607,6 +717,7 @@ function renderSheet(){
   const s = el("div",{class:"sheet"});
   if(sheet==="menu"){
     s.append(el("h2",{},"設定"), el("p",{class:"desc"}, (userId?("ログイン中："+userId+"　"):"")+"いつでも変えられます。書いた内容はこの端末の中にあります。"));
+    s.appendChild(rowcard(WORD("見た目を変える","自分色にする"),"色・書体・質感・文字の大きさ","えらぶ",()=>{ sheet="look"; render(); }));
     s.appendChild(rowcard("話し相手の設定を変える","年代・返しの種類・情報量","変える",()=>{ sheet=null; view="setup"; render(); }));
     s.appendChild(rowcard("相談ログを書き出す","運営用・記録 "+log.length+"件","CSV",()=>exportCsv()));
     s.appendChild(rowcard("感想・改善を送る","テスト協力者からの声","書く",()=>{ sheet="feedback"; render(); }));
@@ -618,6 +729,38 @@ function renderSheet(){
     const ta = el("textarea",{placeholder:"使いにくかったところ、ほしい機能、気になった言葉づかいなど"});
     s.appendChild(ta);
     s.appendChild(el("button",{class:"close", onClick:()=>{ sendFeedback(ta.value); sheet=null; render(); }}, "送る"));
+  } else if(sheet==="look"){
+    s.append(el("h2",{}, WORD("見た目を変える","自分色にする")),
+      el("p",{class:"desc"},"色・書体・質感・文字の大きさを選べます。えらんだ見た目は、この端末に覚えます。"));
+    const grp = (title, list, key, styler) => {
+      const f = el("div",{class:"field"});
+      f.appendChild(el("div",{class:"q"}, title));
+      const box = el("div",{class:"opts"});
+      list.forEach(o=>{
+        const on = look[key]===o.id;
+        const b = el("button",{class:"opt"+(on?" on":""), onClick:()=>{
+          look[key]=o.id; saveLook(); applyLook(); render();
+        }}, o["名前"] || o.id);
+        if(styler) styler(b,o,on);
+        box.appendChild(b);
+      });
+      f.appendChild(box);
+      return f;
+    };
+    // 色：ボタン自体をその色で見せる
+    s.appendChild(grp("色", THEMES(), "theme", (b,o,on)=>{
+      b.style.background = o.bg; b.style.color = lum(o.bg)>0.5?"#1A1A1A":"#FFF";
+      b.style.borderColor = on ? o.accent : "var(--line)";
+      b.style.borderWidth = on ? "2px" : "1px";
+      const dot = el("span",{}); dot.style.cssText =
+        "display:inline-block;width:12px;height:12px;border-radius:50%;margin-right:6px;vertical-align:-2px;background:"+o.accent;
+      b.prepend(dot);
+    }));
+    // 書体：ボタン自体をその書体で見せる
+    s.appendChild(grp("書体", FONTS(), "font", (b,o)=>{ b.style.fontFamily = o.stack; }));
+    s.appendChild(grp("質感", TEXTURES(), "texture"));
+    s.appendChild(grp("文字の大きさ", SIZES(), "size"));
+    s.appendChild(el("p",{class:"note"},"色や書体を増やしたいときは、design.json を編集してください（コードは触りません）。"));
   } else if(sheet==="contacts"){
     s.append(el("h2",{},"すぐにつながれる相談先"),
       el("p",{class:"desc"},"ここから直接かけられます。番号をタップしてください。"));
@@ -652,7 +795,7 @@ function sendFeedback(text){
 
 function clearHistory(){
   if(!confirm("この端末に残っている相談の記録をすべて消します。よろしいですか？")) return;
-  log = []; msgs = [{ role:"bot", text:isTeen()?GREET.teen:GREET.adult }];
+  log = []; msgs = [{ role:"bot", text:greetText() }];
   try{ localStorage.setItem("bgj_log_v2","[]"); }catch(_){}
   sheet=null; render();
 }
@@ -665,6 +808,10 @@ function persist(){
 
 /* --- 起動 --- */
 async function boot(){
+  // ★まず設定ファイルを読む（settings.json / design.json）
+  await loadFiles();
+  loadLook(); applyLook();
+
   // 保存済み設定を復元
   try{
     const s = JSON.parse(localStorage.getItem("bgj_app_v2")||"null");
@@ -701,14 +848,14 @@ async function boot(){
     else if(u.age) persona.age = u.age;
     if(u.mbti){ const m = MBTIS.find(x=>x.id===u.mbti); if(m){ persona.mbti=m.id; persona.style=m.style; persona.detail=m.detail; } }
     view = "chat";
-    if(!msgs.length) msgs = [{ role:"bot", text:isTeen()?GREET.teen:GREET.adult }];
+    if(!msgs.length) msgs = [{ role:"bot", text:greetText() }];
     render(); return;
   }
 
   // アカウント不要の運用：初回は設定画面、2回目以降はチャットへ
   const seen = !!localStorage.getItem("bgj_app_v2");
   view = seen ? "chat" : "setup";
-  if(view==="chat" && !msgs.length) msgs = [{ role:"bot", text:isTeen()?GREET.teen:GREET.adult }];
+  if(view==="chat" && !msgs.length) msgs = [{ role:"bot", text:greetText() }];
   render();
 }
 boot();

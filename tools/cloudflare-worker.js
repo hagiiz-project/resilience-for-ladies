@@ -28,6 +28,10 @@
 // 1) アプリの公開オリジン（パス・末尾スラッシュを付けない）
 const APP_ORIGIN = "https://hagiiz-project.github.io";
 
+// 1-b) ★設定ファイル(settings.json)のURL。ここを読むので、以下の値を書き換えなくても
+//      settings.json を編集するだけで動きが変わります（読めない時だけ下の既定値を使用）。
+const SETTINGS_URL = "https://hagiiz-project.github.io/resilience-for-ladies/soudan-app/settings.json";
+
 // 2) 参照先：
 //    "map"   = 知の地図(GAS)               ← 現状これ
 //    "sheet" = 月1整理した参照台帳(GAS)     ← ⑤将来用。SHEET_URL を設定すれば切替可能
@@ -93,6 +97,43 @@ const EVENT_TAGS = [
 ];
 
 /* ======================================================================
+   ★settings.json を読み込み、コードの既定値より優先して使う
+   ====================================================================== */
+let CFG = null, CFG_AT = 0;
+async function loadSettings() {
+  const now = Date.now();
+  if (CFG && (now - CFG_AT) < DATA_CACHE_MS) return CFG;
+  if (!SETTINGS_URL) return (CFG = {});
+  try {
+    CFG = await getJson(SETTINGS_URL);
+    CFG_AT = now;
+  } catch (_) { CFG = CFG || {}; }
+  return CFG;
+}
+const cfgAI     = () => (CFG && CFG["AIの使い方"]) || {};
+const cfgModel  = () => cfgAI()["モデル名"] || MODEL;
+const cfgSource = () => cfgAI()["参照先"] || SOURCE;
+const cfgGround = () => cfgAI()["根拠にするもの"] || GROUNDING;
+const cfgAsk    = () => (cfgAI()["わからない時は聞き返す"] !== undefined) ? !!cfgAI()["わからない時は聞き返す"] : ASK_WHEN_UNSURE;
+const cfgContacts = () => {
+  const list = (CFG && CFG["相談先"] && CFG["相談先"]["一覧"]) || [];
+  return list.length ? list.map(c => `${c["番号"]}（${c["名前"]}）`).join(" / ") : DEFAULT_CONTACTS;
+};
+const cfgInstructions = () => {
+  const rows = (CFG && CFG["AIへの共通指示"] && CFG["AIへの共通指示"]["行"]) || null;
+  return (rows && rows.length) ? rows : INSTRUCTIONS;
+};
+const cfgLevelHint = (level) => {
+  const steps = (CFG && CFG["年齢ごとのことば"] && CFG["年齢ごとのことば"]["段階"]) || [];
+  const hit = steps.find(s => s["名前"] === level);
+  return hit ? String(hit["AIへの指示"] || "") : "";
+};
+const cfgTags = () => {
+  const list = (CFG && CFG["事象タグ"] && CFG["事象タグ"]["一覧"]) || null;
+  return (list && list.length) ? list.map(t => ({ tag: t["タグ"], kw: t["言葉"] || [] })) : EVENT_TAGS;
+};
+
+/* ======================================================================
    エントリポイント
    ====================================================================== */
 export default {
@@ -107,6 +148,8 @@ export default {
 };
 
 async function handleAi(body, env) {
+  await loadSettings();                       // ★毎回まず設定ファイルを読む（5分キャッシュ）
+  const level = String(body.level || "");     // 年齢の段階（kids / teen / adult）
   const text = String(body.text || "").slice(0, MAX_INPUT_CHARS).trim();
   if (!text) return json({ error: "empty" }, 400);
   if (!env.GEMINI_KEY) return json({ error: "no key set" }, 500);
@@ -121,7 +164,7 @@ async function handleAi(body, env) {
   const sel = selectCards(src, text, pick, exclude);
 
   // 確信が持てない → 断定せず、ワンタップで選べる聞き返しを返す
-  if (ASK_WHEN_UNSURE && !pick && sel.needAsk) {
+  if (cfgAsk() && !pick && sel.needAsk) {
     const q = "もう少しだけ教えてください。いちばん近いのはどれですか。";
     const listed = sel.options.map((o, i) => `${i + 1}. ${o.label}`).join("\n");
     return json({
@@ -136,7 +179,7 @@ async function handleAi(body, env) {
   const built = await buildEvidence(sel.cards);
 
   // --- Gemini に投げる ---
-  const reply = await askGemini(env, text, built.body, sel.scope);
+  const reply = await askGemini(env, text, built.body, sel.scope, level);
 
   return json({
     reply,
@@ -156,11 +199,12 @@ async function loadSource() {
 
   let out = { cards: [], kb: null };
   try {
-    if (SOURCE === "sheet" && SHEET_URL) {
+    const SRC = cfgSource();
+    if (SRC === "sheet" && SHEET_URL) {
       out.cards = normalizeSheet(await getJson(SHEET_URL));
-    } else if (SOURCE === "kb") {
+    } else if (SRC === "kb") {
       out.kb = await getJson(KB_URL);
-    } else if (SOURCE === "both") {
+    } else if (SRC === "both") {
       out.cards = normalizeMap(await getJson(MAP_URL));
       out.kb    = await getJson(KB_URL).catch(() => null);
     } else {
@@ -249,7 +293,7 @@ function selectCards(src, text, pick, exclude) {
   if (!cards.length) return { cards: [], scope: "", needAsk: false, options: [] };
 
   // 事象タグの判定（相談文の語彙から）
-  const hitTags = EVENT_TAGS.filter(t => t.kw.some(k => text.indexOf(k) >= 0)).map(t => t.tag);
+  const hitTags = cfgTags().filter(t => t.kw.some(k => text.indexOf(k) >= 0)).map(t => t.tag);
 
   // 明示的な選択（聞き返しの答え／ワンタップ）があれば最優先
   const picked = pick ? cards.filter(c => c.mass === pick || c.massLabel === pick || c.tags.includes(pick)
@@ -281,7 +325,7 @@ function selectCards(src, text, pick, exclude) {
 }
 
 function matchEventTag(card, tagName) {
-  const t = EVENT_TAGS.find(x => x.tag === tagName);
+  const t = cfgTags().find(x => x.tag === tagName);
   if (!t) return false;
   const hay = card.massLabel + " " + card.tags.join(" ") + " " + card.summary + " " + card.raw;
   return t.kw.some(k => hay.indexOf(k) >= 0);
@@ -306,7 +350,7 @@ function rank(cards, text, hitTags) {
     if (c.fixed) s += 1;
     if (c.conf === "低" && !c.fixed) s -= 1;
     // URLが無いカードは根拠にしづらい（GROUNDING="url" のとき）
-    if (GROUNDING === "url" && !c.urls.some(isHttp)) s -= 2;
+    if (cfgGround() === "url" && !c.urls.some(isHttp)) s -= 2;
     c._score = s;
     return c;
   }).sort((a, b) => b._score - a._score);
@@ -329,7 +373,7 @@ function buildOptions(scored, hitTags) {
 
   // 2) 上位カードに実際に当てはまる事象タグ（利用者の言葉に近い）
   for (const c of scored.slice(0, 8)) {
-    for (const t of EVENT_TAGS) {
+    for (const t of cfgTags()) {
       if (opts.length >= 4) break;
       if (matchEventTag(c, t.tag)) add(t.tag, t.tag);
     }
@@ -342,7 +386,7 @@ function buildOptions(scored, hitTags) {
   }
 
   // 4) 何も無いときの既定
-  if (!opts.length) EVENT_TAGS.slice(0, 4).forEach(t => add(t.tag, t.tag));
+  if (!opts.length) cfgTags().slice(0, 4).forEach(t => add(t.tag, t.tag));
 
   opts.push({ value: "", label: "うまく選べない／その他" });
   return opts;
@@ -359,7 +403,7 @@ async function buildEvidence(cards) {
     const chunk = [];
     const head = c.massLabel ? `● ${c.massLabel}` : "●";
 
-    if (GROUNDING === "url" || GROUNDING === "both") {
+    if (cfgGround() === "url" || cfgGround() === "both") {
       const urls = c.urls.filter(isHttp).slice(0, MAX_URLS_PER_CARD);
       for (const u of urls) {
         if (fetched >= MAX_URL_FETCH) break;
@@ -376,7 +420,7 @@ async function buildEvidence(cards) {
       if (!chunk.length && c.summary) chunk.push(`   ${c.summary.slice(0, RAW_CHARS)}`);
     }
 
-    if (GROUNDING === "raw" || (GROUNDING === "both" && c.raw)) {
+    if (cfgGround() === "raw" || (cfgGround() === "both" && c.raw)) {
       if (c.raw) chunk.push(`   〔調査メモ〕${c.raw.slice(0, RAW_CHARS)}`);
     }
 
@@ -445,9 +489,11 @@ const INSTRUCTIONS = [
   "回答の最後に必ず、相談先（電話番号）を1〜3件そえてください。"
 ];
 
-async function askGemini(env, text, evidence, scope) {
-  const system = INSTRUCTIONS.join("\n")
-    + `\n\n相談先: ${DEFAULT_CONTACTS}`
+async function askGemini(env, text, evidence, scope, level) {
+  const hint = cfgLevelHint(level);
+  const system = cfgInstructions().join("\n")
+    + (hint ? `\n${hint}` : "")                         // ★年齢に応じた言葉づかい
+    + `\n\n相談先: ${cfgContacts()}`
     + (scope ? `\n想定している場面: ${scope}` : "")
     + "\n\n【参照資料】\n" + evidence;
 
@@ -464,7 +510,7 @@ async function askGemini(env, text, evidence, scope) {
   };
   try {
     const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`,
+      `https://generativelanguage.googleapis.com/v1beta/models/${cfgModel()}:generateContent`,
       { method: "POST",
         headers: { "Content-Type": "application/json", "x-goog-api-key": env.GEMINI_KEY },
         body: JSON.stringify(payload) });
@@ -472,7 +518,7 @@ async function askGemini(env, text, evidence, scope) {
     const out = (data?.candidates?.[0]?.content?.parts || []).map(p => p.text || "").join("").trim();
     if (out) return out;
   } catch (_) {}
-  return "うまく言葉にできなくても大丈夫です。よければ、下の相談先にそのまま話してみてください。\n\n" + DEFAULT_CONTACTS;
+  return "うまく言葉にできなくても大丈夫です。よければ、下の相談先にそのまま話してみてください。\n\n" + cfgContacts();
 }
 
 /* ======================================================================
