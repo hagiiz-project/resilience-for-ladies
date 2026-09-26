@@ -74,6 +74,14 @@
   .chips{display:flex; flex-wrap:wrap; gap:6px; margin:4px 0 14px}
   .chip{font-size:12px; font-weight:700; color:var(--accent-d); background:oklch(0.96 0.03 20);
         border:1px solid var(--warn-line); border-radius:999px; padding:6px 11px; text-decoration:none}
+  .picks{display:flex; flex-wrap:wrap; gap:7px; margin:2px 0 12px}
+  .pick{border:1.5px solid var(--accent); background:var(--panel); color:var(--accent-d);
+        border-radius:999px; padding:9px 14px; font-size:13px; font-weight:700}
+  .pick:hover{background:var(--accent); color:var(--on-accent,#fff)}
+  .scopeline{display:flex; align-items:center; gap:8px; flex-wrap:wrap; font-size:11.5px;
+             color:var(--ink-3); margin:-4px 0 8px 2px}
+  .redo{border:1px solid var(--line); background:transparent; color:var(--ink-2);
+        border-radius:999px; padding:4px 10px; font-size:11.5px}
   .typing{display:inline-flex; gap:4px; padding:12px 14px; background:var(--bot);
           border:1px solid var(--line); border-radius:16px; border-top-left-radius:5px}
   .typing i{width:6px;height:6px;border-radius:50%;background:var(--ink-3);opacity:.4;
@@ -355,7 +363,7 @@ function normalize(kb){
   const list = CONTACTS_LIST();
   if(list.length){
     CONTACTS = {};
-    list.forEach((c,i)=>{ CONTACTS["c"+i] = { label:c["名前"], number:c["番号"], tel:c["発信先"]||c["番号"] }; });
+    list.forEach((c,i)=>{ CONTACTS[c.id || ("c"+i)] = { label:c["名前"], number:c["番号"], tel:c["発信先"]||c["番号"] }; });
   }
   TOPICS = (kb.chunks || []).map(c => ({
     id:c.id, label:c.title, kw:c.keywords || [], urgent:!!c.urgent,
@@ -634,10 +642,25 @@ function renderChat(){
   );
   // チャット
   const scroll = el("div",{class:"scroll", id:"scroll"});
-  msgs.forEach(m=>{
+  msgs.forEach((m, idx)=>{
     const row = el("div",{class:"msg "+m.role});
     row.appendChild(el("div",{class:"bubble"}, m.text));
     scroll.appendChild(row);
+    // 聞き返し：ワンタップの選択肢
+    if(m.options && m.options.length){
+      const box = el("div",{class:"picks"});
+      m.options.forEach(o=>{
+        box.appendChild(el("button",{class:"pick", onClick:()=>chooseScope(idx, o.value, o.label, false)}, o.label));
+      });
+      scroll.appendChild(box);
+    }
+    // 推測した場面を見せる＋「ちがう場面だった」で引き直せる
+    if(m.role==="bot" && m.scopeLabel && !m.options && !m.scopeDone){
+      const line = el("div",{class:"scopeline"});
+      line.appendChild(el("span",{}, "「"+m.scopeLabel+"」として答えました"));
+      line.appendChild(el("button",{class:"redo", onClick:()=>chooseScope(idx, "", "", true)}, "ちがう場面だった"));
+      scroll.appendChild(line);
+    }
     if(m.chips){
       const c = el("div",{class:"chips"});
       m.chips.split("　").filter(Boolean).forEach(txt=>{
@@ -669,6 +692,39 @@ function renderChat(){
   return root;
 }
 
+/* AIの回答に付ける相談先ボタン（相談内容→settings.jsonの既定→よりそい の順） */
+function aiChips(tp){
+  if (tp && tp.contacts && tp.contacts.length) return chipsFor(tp.contacts);
+  const def = (SETTINGS && SETTINGS["相談先"] && SETTINGS["相談先"]["AIの回答にいつも付けるid"]) || [];
+  return chipsFor(def.length ? def : (FALLBACK ? FALLBACK.contacts : []));
+}
+
+/* AI中継サーバーに聞く。extra = { pick, exclude } */
+async function callAI(text, extra){
+  const res = await fetch(CONFIG.AI_ENDPOINT, {
+    method:"POST", headers:{ "Content-Type":"application/json" },
+    body: JSON.stringify(Object.assign({ text, level: levelOf() }, extra||{}))
+  });
+  return await res.json();
+}
+
+/* AIの返事を画面に出す（聞き返し／ふつうの回答の両方） */
+function pushAIReply(data, origText, tp, excludeSoFar){
+  const chips = aiChips(tp);
+  if (data && data.ask && Array.isArray(data.options) && data.options.length){
+    // 聞き返し：ワンタップの選択肢をボタンで出す（相談先ボタンも同時に出す＝待たせない）
+    msgs.push({ role:"bot", text: teenize(String(data.reply||"")), chips,
+                options: data.options, origText, exclude: excludeSoFar||[] });
+    return true;
+  }
+  const reply = data && data.reply ? String(data.reply) : "";
+  if (!reply) return false;
+  msgs.push({ role:"bot", text: teenize(reply), chips,
+              scope: data.scope||"", scopeLabel: data.scopeLabel||"",
+              origText, exclude: excludeSoFar||[] });
+  return true;
+}
+
 async function doSend(ta){
   const t = String(ta.value||"").trim();
   if(!t || thinking) return;
@@ -678,38 +734,48 @@ async function doSend(ta){
   record(tp.id, t);
   thinking = true; render();
 
-  // AIを呼ぶか判定（CONFIG.AI_MODE による）。
-  //  fallback：不一致(そのほか)のみ／safe：緊急以外はAI／all：全部AI
+  // AIを呼ぶか判定（settings.json の「範囲」）。fallback / safe / all
   let useAI = false;
   if (CONFIG.AI_ENDPOINT){
     if (CONFIG.AI_MODE === "all")        useAI = true;
     else if (CONFIG.AI_MODE === "safe")  useAI = !tp.urgent;
-    else /* "fallback" */                useAI = (tp.id === "general");
+    else                                 useAI = (tp.id === "general");
   }
 
   if (useAI){
     try{
-      const res = await fetch(CONFIG.AI_ENDPOINT, {
-        method:"POST", headers:{ "Content-Type":"application/json" },
-        body: JSON.stringify({ text: t, level: levelOf() })
-      });
-      const data = await res.json();
-      const reply = data && data.reply ? String(data.reply) : "";
-      if(reply){
-        const cc = (tp.contacts && tp.contacts.length) ? tp.contacts : FALLBACK.contacts;
-        msgs.push({ role:"bot", text: teenize(reply), chips: chipsFor(cc) });
-        thinking = false; render(); return;
-      }
-    }catch(_){ /* 失敗時は下の監修フォールバックへ */ }
+      const data = await callAI(t, {});
+      if (pushAIReply(data, t, tp, [])) { thinking = false; render(); return; }
+    }catch(_){ /* 失敗時は下の監修文へ */ }
   }
 
-  // 監修文の応答。AIを使わないぶん、少しだけ間をおいて自然に見せる。
-  const delay = useAI ? 0 : 560;
+  // 監修文の応答
   setTimeout(()=>{
     const r = compose(tp);
     msgs.push({ role:"bot", text:r.text, chips:r.chips });
     thinking = false; render();
-  }, delay);
+  }, useAI ? 0 : 560);
+}
+
+/* 聞き返しのボタンを押した／「ちがう場面だった」を押した */
+async function chooseScope(msgIndex, value, label, isRedo){
+  const m = msgs[msgIndex];
+  if (!m || thinking) return;
+  m.options = null;                         // 一度選んだらボタンを消す（二重送信防止）
+  m.scopeDone = true;
+  const tp = match(m.origText);
+  const exclude = (m.exclude||[]).slice();
+  if (isRedo && m.scope) exclude.push(m.scope);   // ちがう場面 → その場面を外して引き直す
+  msgs.push({ role:"user", text: isRedo ? "ちがう場面でした" : label });
+  thinking = true; render();
+  try{
+    const extra = isRedo ? { exclude } : { pick: value, exclude };
+    const data = await callAI(m.origText, extra);
+    if (pushAIReply(data, m.origText, tp, exclude)) { thinking = false; render(); return; }
+  }catch(_){}
+  const r = compose(tp);
+  msgs.push({ role:"bot", text:r.text, chips:r.chips });
+  thinking = false; render();
 }
 
 function renderSheet(){
