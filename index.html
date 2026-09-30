@@ -1,930 +1,851 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<title>ぼうさい女子会｜相談窓口</title>
-<meta name="description" content="なまえを書かなくても相談できる窓口です。" />
-<link rel="preconnect" href="https://fonts.googleapis.com" />
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Kaisei+Decol:wght@400;500;700&family=Zen+Kaku+Gothic+New:wght@400;500;700;900&display=swap" rel="stylesheet" />
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>守れてない地図、これからみんなで守る地図</title>
+<meta name="robots" content="noindex">
 <style>
-  :root{
-    --bg: oklch(0.985 0.008 80);
-    --panel: oklch(1 0 0);
-    --ink: oklch(0.26 0.02 40);
-    --ink-2: oklch(0.45 0.02 40);
-    --ink-3: oklch(0.6 0.02 40);
-    --line: oklch(0.91 0.015 60);
-    --accent: oklch(0.55 0.15 20);
-    --accent-d: oklch(0.45 0.15 20);
-    --bot: oklch(0.97 0.012 70);
-    --user: oklch(0.62 0.14 25);
-    --ok: oklch(0.45 0.1 145);
-    --warn-bg: oklch(0.96 0.035 20);
-    --warn-line: oklch(0.9 0.04 20);
-  }
-  *{box-sizing:border-box}
-  html,body{height:100%}
-  body{
-    margin:0; background:var(--bg); color:var(--ink);
-    font-family:var(--font, "Zen Kaku Gothic New", system-ui, sans-serif);
-    font-size:calc(16px * var(--scale, 1));
-    -webkit-font-smoothing:antialiased; text-wrap:pretty;
-    transition:background .2s ease, color .2s ease;
-  }
-  /* 質感（背景の模様）。design.json の「質感」で切り替わります */
-  body.tex-dot{background-image:radial-gradient(var(--line) 1px, transparent 1.2px); background-size:14px 14px}
-  body.tex-kougo{background-image:
-    repeating-linear-gradient(0deg,var(--line) 0 1px,transparent 1px 28px),
-    repeating-linear-gradient(90deg,var(--line) 0 1px,transparent 1px 28px)}
-  body.tex-kami{background-image:
-    radial-gradient(circle at 20% 30%,var(--line) .6px,transparent .7px),
-    radial-gradient(circle at 70% 65%,var(--line) .5px,transparent .6px);
-    background-size:13px 13px,19px 19px}
-  button{font-family:inherit; cursor:pointer}
-  input,textarea,select{font-family:inherit}
-  @keyframes riseIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{min-height:100vh;background:var(--bg);color:var(--ink);font-family:var(--font);
+  transition:background .2s ease,color .2s ease;padding-bottom:88px;-webkit-text-size-adjust:100%}
+body.gate{padding-bottom:0;display:flex;align-items:center;justify-content:center;min-height:100dvh}
+body.tex-dot{image-rendering:pixelated}
+body.tex-kougo{background-image:
+  repeating-linear-gradient(0deg,var(--edge) 0 1px,transparent 1px 28px),
+  repeating-linear-gradient(90deg,var(--edge) 0 1px,transparent 1px 28px)}
+body.tex-kami{background-image:
+  radial-gradient(circle at 20% 30%,var(--edge) .6px,transparent .7px),
+  radial-gradient(circle at 70% 65%,var(--edge) .5px,transparent .6px);background-size:13px 13px,19px 19px}
+body.tex-sousa{background-image:repeating-linear-gradient(0deg,rgba(0,0,0,.10) 0 1px,transparent 1px 4px)}
+.wrap{max-width:860px;margin:0 auto;padding:12px 12px 0}
 
-  /* 画面はスマホ幅を中心に、PCでは中央に寄せる */
-  .app{max-width:460px; margin:0 auto; min-height:100dvh; display:flex; flex-direction:column;
-       background:var(--bg); box-shadow:0 0 60px rgba(0,0,0,.05)}
+.gatewrap{width:100%;max-width:400px;padding:24px 20px;margin:auto;text-align:center}
+.gatemap{display:grid;grid-template-columns:repeat(6,1fr);gap:4px;width:150px;margin:0 auto 24px}
+.gatemap i{aspect-ratio:1.2/1;border:1px solid var(--edge);border-radius:4px;background:var(--frontier)}
+.gatemap i.on{background:var(--accent);border-color:var(--accent)}
+.gatetitle{font-size:clamp(21px,6.2vw,29px);font-weight:800;letter-spacing:.02em;margin:0 0 10px;line-height:1.35}
+.gatelead{font-size:13.5px;line-height:1.9;color:var(--dim);margin:0 0 26px}
+.gatewrap label{text-align:left}
+.gatefoot{font-size:10.5px;color:var(--dim);line-height:1.9;margin-top:20px}
+.gatefoot button{background:none;border:0;color:var(--accent2);font-size:10.5px;cursor:pointer;padding:0;text-decoration:underline}
 
-  /* ヘッダー */
-  .top{display:flex; align-items:center; gap:10px; padding:12px 16px calc(12px);
-       border-bottom:1px solid var(--line); position:sticky; top:0; background:var(--bg); z-index:5}
-  .avatar{width:34px;height:34px;border-radius:50%;flex:0 0 34px;
-          background:linear-gradient(140deg, oklch(0.72 0.13 20), oklch(0.78 0.12 70))}
-  .top .name{font-weight:700; font-size:14px}
-  .top .sub{font-size:11px; color:var(--ink-3); margin-top:1px}
-  .top .spacer{flex:1}
-  .iconbtn{border:1px solid var(--line); background:var(--panel); border-radius:10px;
-           padding:7px 9px; font-size:12px; color:var(--ink-2); line-height:1}
-  .exitbtn{border:none; background:var(--ink); color:#fff; border-radius:999px;
-           padding:8px 12px; font-size:12px; font-weight:700}
+.bar{display:flex;align-items:center;gap:6px;padding:2px 0 12px;flex-wrap:wrap}
+.brand{font-size:clamp(14px,3.6vw,18px);font-weight:800;letter-spacing:.02em;line-height:1.3;cursor:pointer;flex:1 1 180px}
+.brand small{display:block;font-size:10px;font-weight:400;color:var(--dim);letter-spacing:.06em;margin-top:2px}
+.spacer{flex:1}
+button{font-family:inherit}
+.ghost{background:none;border:1.5px solid var(--edge);color:var(--dim);border-radius:99px;
+  padding:6px 11px;font-size:11px;cursor:pointer;font-weight:600}
+.ghost:hover{color:var(--ink);border-color:var(--accent)}
 
-  /* チャット領域 */
-  .scroll{flex:1; overflow-y:auto; padding:18px 16px 8px}
-  .msg{display:flex; margin:0 0 12px; animation:riseIn .28s ease both}
-  .msg .bubble{max-width:82%; padding:12px 14px; border-radius:16px; font-size:14px; line-height:1.85;
-               white-space:pre-wrap; word-break:break-word}
-  .msg.bot .bubble{background:var(--bot); border:1px solid var(--line); border-top-left-radius:5px}
-  .msg.user{justify-content:flex-end}
-  .msg.user .bubble{background:var(--user); color:#fff; border-top-right-radius:5px}
-  .chips{display:flex; flex-wrap:wrap; gap:6px; margin:4px 0 14px}
-  .chip{font-size:12px; font-weight:700; color:var(--accent-d); background:oklch(0.96 0.03 20);
-        border:1px solid var(--warn-line); border-radius:999px; padding:6px 11px; text-decoration:none}
-  .picks{display:flex; flex-wrap:wrap; gap:7px; margin:2px 0 12px}
-  .pick{border:1.5px solid var(--accent); background:var(--panel); color:var(--accent-d);
-        border-radius:999px; padding:9px 14px; font-size:13px; font-weight:700}
-  .pick:hover{background:var(--accent); color:var(--on-accent,#fff)}
-  .scopeline{display:flex; align-items:center; gap:8px; flex-wrap:wrap; font-size:11.5px;
-             color:var(--ink-3); margin:-4px 0 8px 2px}
-  .redo{border:1px solid var(--line); background:transparent; color:var(--ink-2);
-        border-radius:999px; padding:4px 10px; font-size:11.5px}
-  .typing{display:inline-flex; gap:4px; padding:12px 14px; background:var(--bot);
-          border:1px solid var(--line); border-radius:16px; border-top-left-radius:5px}
-  .typing i{width:6px;height:6px;border-radius:50%;background:var(--ink-3);opacity:.4;
-            animation:blink 1s infinite}
-  .typing i:nth-child(2){animation-delay:.2s} .typing i:nth-child(3){animation-delay:.4s}
-  @keyframes blink{0%,100%{opacity:.3}50%{opacity:1}}
+/* はじめかた */
+.guide{background:var(--panel);border:1.5px solid var(--accent);border-radius:16px;padding:14px 15px;margin-bottom:12px}
+body.tex-dot .guide{border-radius:0;box-shadow:3px 3px 0 var(--edge)}
+.guide h2{margin:0 0 4px;font-size:15px;font-weight:800}
+.guide p{margin:0 0 11px;font-size:12px;color:var(--dim);line-height:1.75}
+.steps{display:flex;flex-direction:column;gap:7px;margin-bottom:13px}
+.step{display:flex;gap:9px;align-items:flex-start;font-size:12.5px;line-height:1.6}
+.step i{flex:0 0 20px;height:20px;border-radius:50%;background:var(--accent);color:var(--onaccent);
+  font-style:normal;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;margin-top:1px}
+.guide .primary{width:100%}
+.guidelink{background:none;border:0;color:var(--accent2);font-size:11.5px;cursor:pointer;
+  text-decoration:underline;padding:0;font-weight:600}
 
-  /* 入力バー */
-  .composer{border-top:1px solid var(--line); padding:10px 12px calc(10px + env(safe-area-inset-bottom));
-            background:var(--bg)}
-  .composer .row{display:flex; gap:8px; align-items:flex-end}
-  .composer textarea{flex:1; resize:none; border:1px solid var(--line); border-radius:14px;
-                     padding:11px 13px; font-size:14px; line-height:1.6; max-height:120px; background:var(--panel)}
-  .send{border:none; background:var(--accent); color:#fff; border-radius:14px; padding:11px 16px;
-        font-weight:700; font-size:14px; flex:0 0 auto}
-  .send:disabled{opacity:.4}
-  .hint{font-size:11px; color:var(--ink-3); margin:8px 4px 0; line-height:1.6}
+.boardbox{background:var(--panel);border:1.5px solid var(--edge);border-radius:16px;padding:11px}
+body.tex-dot .boardbox{border-radius:0;box-shadow:3px 3px 0 var(--edge)}
+.grid{display:grid;gap:5px;grid-template-columns:88px repeat(var(--ncol),minmax(0,1fr))}
+.hd{font-size:12px;font-weight:700;color:var(--dim);display:flex;align-items:flex-end;
+  justify-content:center;text-align:center;padding-bottom:4px;line-height:1.2;word-break:keep-all}
+.rowhd{font-size:12px;font-weight:700;color:var(--ink);display:flex;align-items:center;
+  justify-content:flex-end;text-align:right;line-height:1.25;background:var(--frontier);
+  border-radius:9px 3px 3px 9px;padding:4px 8px 4px 5px;word-break:keep-all}
+body.tex-dot .rowhd{border-radius:0}
+.cell{aspect-ratio:1.35/1;max-height:70px;border:1.5px solid var(--edge);border-radius:9px;
+  background:var(--frontier);cursor:pointer;padding:5px;display:flex;flex-direction:column;
+  justify-content:space-between;align-items:flex-end;transition:transform .1s ease;overflow:hidden}
+body.tex-dot .cell{border-radius:0;box-shadow:2px 2px 0 var(--edge)}
+.cell:hover{transform:translateY(-2px)}
+.cell:focus-visible{outline:3px solid var(--accent2);outline-offset:2px}
+.cell .qmark{font-size:11px;line-height:1;align-self:flex-start}
+.cell .gauge{display:flex;gap:2px;width:100%;margin-top:auto}
+.cell .gauge i{flex:1;height:5px;border-radius:2px;background:var(--onfill);opacity:.3}
+.cell .gauge i.on{opacity:1}
+.cell.f1{background:color-mix(in srgb,var(--accent) 30%,var(--frontier));border-color:transparent}
+.cell.f2{background:color-mix(in srgb,var(--accent) 55%,var(--frontier));border-color:transparent}
+.cell.f3{background:color-mix(in srgb,var(--accent) 78%,var(--frontier));border-color:transparent}
+.cell.f4{background:var(--accent);border-color:transparent}
+.cell.new{background:transparent;border-style:dashed;opacity:.45}
+body.picking .cell{outline:2px dashed var(--accent2);outline-offset:-3px}
+.pickbanner{background:var(--accent);color:var(--onaccent);border-radius:12px;padding:10px 13px;
+  font-size:12.5px;font-weight:700;margin-bottom:10px;display:flex;align-items:center;gap:10px}
+.pickbanner button{margin-left:auto;background:none;border:1.5px solid var(--onaccent);
+  color:var(--onaccent);border-radius:99px;padding:4px 10px;font-size:11px;cursor:pointer}
+.pulse{animation:pop .5s ease}
+@keyframes pop{0%{transform:scale(.85)}60%{transform:scale(1.1)}100%{transform:scale(1)}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+.legend{display:flex;flex-wrap:wrap;gap:9px;padding:11px 2px 2px;font-size:10.5px;color:var(--dim)}
+.legend span{display:flex;align-items:center;gap:4px}
+.legend i{width:13px;height:13px;border-radius:3px;display:inline-block;border:1px solid var(--edge)}
+.note{font-size:10.5px;color:var(--dim);text-align:center;padding:8px 4px 0;line-height:1.7}
 
-  /* セットアップ画面 */
-  .setup{padding:28px 22px 40px; overflow-y:auto}
-  .setup h1{font-family:"Kaisei Decol",serif; font-size:22px; line-height:1.6; margin:6px 0 8px}
-  .setup .lead{font-size:13px; line-height:2; color:var(--ink-2); margin:0 0 26px}
-  .field{margin:0 0 22px}
-  .field .q{font-size:13px; font-weight:700; margin:0 0 10px}
-  .field .note{font-size:12px; color:var(--ink-3); line-height:1.8; margin:8px 0 0}
-  .opts{display:flex; flex-wrap:wrap; gap:8px}
-  .opt{border:1px solid var(--line); background:var(--panel); color:var(--ink-2);
-       border-radius:999px; padding:9px 14px; font-size:13px}
-  .opt.on{background:var(--accent); color:#fff; border-color:var(--accent)}
-  .primary{width:100%; border:none; background:var(--accent); color:#fff; border-radius:14px;
-           padding:14px; font-size:15px; font-weight:700; margin-top:8px}
-  .ghost{width:100%; border:1px solid var(--line); background:transparent; color:var(--ink-2);
-         border-radius:14px; padding:12px; font-size:13px; margin-top:10px}
+/* マスのページ */
+.back{background:none;border:0;color:var(--accent2);font-size:12.5px;cursor:pointer;
+  padding:0;font-weight:700;margin-bottom:10px}
+.cellhead{background:var(--panel);border:1.5px solid var(--edge);border-radius:16px;padding:14px 15px;margin-bottom:12px}
+body.tex-dot .cellhead{border-radius:0;box-shadow:3px 3px 0 var(--edge)}
+.cellhead h1{margin:0 0 3px;font-size:20px;font-weight:800;line-height:1.3}
+.cellhead .state{font-size:12.5px;color:var(--dim);line-height:1.7;margin:9px 0 0}
+.cellhead .state b{color:var(--ink)}
+.meter{display:flex;gap:3px;margin:10px 0 0}
+.meter i{flex:1;height:9px;background:var(--frontier);border-radius:3px}
+.meter i.on{background:var(--accent)}
+.sect{background:var(--panel);border:1.5px solid var(--edge);border-radius:16px;padding:13px 15px;margin-bottom:12px}
+body.tex-dot .sect{border-radius:0;box-shadow:3px 3px 0 var(--edge)}
+.secth{font-size:12px;font-weight:800;margin:0 0 3px}
+.sectp{font-size:11px;color:var(--dim);line-height:1.7;margin:0 0 11px}
+.srow{display:flex;align-items:center;gap:9px;padding:5px 0;font-size:12px}
+.srow span{flex:0 0 96px;color:var(--dim);font-weight:600}
+.srow .b{flex:1;height:9px;background:var(--frontier);border-radius:4px;overflow:hidden}
+.srow .b i{display:block;height:100%;background:var(--accent)}
+.srow em{font-style:normal;flex:0 0 62px;text-align:right;font-size:10.5px;color:var(--dim)}
+.srow.zero span,.srow.zero em{opacity:.55}
 
-  /* シート（メニュー・フィードバック等） */
-  .sheet-bg{position:fixed; inset:0; background:rgba(0,0,0,.4); display:flex; align-items:flex-end;
-            justify-content:center; z-index:20}
-  .sheet{width:100%; max-width:460px; background:var(--bg); border-radius:22px 22px 0 0;
-         padding:22px 20px calc(22px + env(safe-area-inset-bottom)); animation:riseIn .25s ease both}
-  .sheet h2{font-family:"Kaisei Decol",serif; font-size:18px; margin:0 0 4px}
-  .sheet p.desc{font-size:12.5px; color:var(--ink-2); line-height:1.9; margin:0 0 18px}
-  .rowcard{display:flex; align-items:center; gap:12px; padding:14px 4px; border-top:1px solid var(--line)}
-  .rowcard .t{font-size:14px; font-weight:700}
-  .rowcard .b{font-size:12px; color:var(--ink-3); margin-top:2px}
-  .rowcard .sp{flex:1}
-  .rowcard button{border:1px solid var(--line); background:var(--panel); border-radius:10px;
-                  padding:8px 14px; font-size:13px; font-weight:700; color:var(--ink)}
-  .rowcard button.danger{color:var(--accent); border-color:var(--warn-line)}
-  .sheet textarea{width:100%; border:1px solid var(--line); border-radius:12px; padding:12px;
-                  font-size:14px; line-height:1.7; min-height:96px; background:var(--panel)}
-  .sheet .close{width:100%; border:none; background:var(--ink); color:#fff; border-radius:14px;
-                padding:13px; font-weight:700; margin-top:16px}
-  .banner{background:var(--warn-bg); border:1px solid var(--warn-line); border-radius:14px;
-          padding:12px 14px; font-size:12px; line-height:1.85; color:var(--ink-2); margin:0 0 14px}
-  .loading{display:flex; align-items:center; justify-content:center; min-height:100dvh; font-size:14px; color:var(--ink-3)}
-  .safe{font-size:11.5px; color:var(--ink-3); text-align:center; padding:10px 16px 4px; line-height:1.7}
-  a{color:var(--accent-d)}
+.qbox{background:var(--bg);border-left:3px solid var(--accent2);border-radius:9px;
+  padding:10px 12px;margin-bottom:8px;font-size:12.5px;line-height:1.65}
+.qbox .meta{font-size:10px;color:var(--dim);margin-top:3px}
+.card{border-top:1.5px solid var(--edge);padding:12px 0}
+.card:first-child{border-top:0}
+.raw{font-size:13px;line-height:1.75;margin:0 0 6px;white-space:pre-wrap;word-break:break-word}
+.src{font-size:10.5px;color:var(--dim);word-break:break-all;line-height:1.7}
+.src a{color:var(--accent2)}
+.srclist{margin:0;padding:0;list-style:none}
+.judge{border:1.5px dashed var(--edge);border-radius:11px;padding:9px 11px;margin:9px 0;font-size:11.5px;line-height:1.65}
+.judge b{color:var(--ink)}
+.judge .why{color:var(--dim);display:block;margin-top:3px}
+.judge .fixed{color:var(--accent2);font-weight:800}
+.take{background:var(--accent2);color:var(--onaccent2);border:0;border-radius:99px;
+  padding:7px 13px;font-size:11.5px;cursor:pointer;font-weight:700;margin-top:8px}
+.take:disabled{opacity:.4;cursor:not-allowed}
+
+.scrim{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;
+  justify-content:center;z-index:40;padding:14px}
+.sheet{background:var(--panel);color:var(--ink);width:100%;max-width:520px;max-height:86vh;
+  display:flex;flex-direction:column;border-radius:18px;border:1.5px solid var(--edge);overflow:hidden}
+body.tex-dot .sheet{border-radius:0}
+.sheetbody{overflow-y:auto;padding:18px}
+.sheetfoot{border-top:1.5px solid var(--edge);padding:11px 14px;display:flex;gap:8px;background:var(--panel)}
+.sheet h3{margin:0 0 4px;font-size:17px;font-weight:800}
+.sheet .sub{font-size:11.5px;color:var(--dim);margin:0 0 12px;line-height:1.7}
+label{display:block;font-size:11px;color:var(--dim);margin:13px 0 4px;letter-spacing:.05em;font-weight:700}
+input,textarea{width:100%;background:var(--bg);color:var(--ink);border:1.5px solid var(--edge);
+  border-radius:11px;padding:10px;font-size:16px;font-family:inherit}
+body.tex-dot input,body.tex-dot textarea{border-radius:0}
+textarea{resize:vertical;line-height:1.6}
+input:focus,textarea:focus{outline:2px solid var(--accent);outline-offset:1px;border-color:var(--accent)}
+.primary{flex:1;background:var(--accent);color:var(--onaccent);border:0;border-radius:99px;
+  padding:13px;font-size:14.5px;font-weight:800;cursor:pointer}
+.primary:disabled{opacity:.45;cursor:not-allowed}
+.cancel{background:none;border:1.5px solid var(--edge);color:var(--dim);border-radius:99px;
+  padding:13px 18px;font-size:13px;cursor:pointer;font-weight:600}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.chip{border:1.5px solid var(--edge);background:var(--bg);color:var(--dim);border-radius:99px;
+  padding:7px 12px;font-size:12px;cursor:pointer;font-weight:600}
+.chip[aria-pressed="true"]{border-color:var(--accent);background:var(--accent);color:var(--onaccent)}
+.chip.warn{border-color:var(--accent2)}
+.sw{width:13px;height:13px;border-radius:50%;display:inline-block;margin-right:5px;vertical-align:-2px}
+.rule{display:flex;justify-content:space-between;gap:10px;font-size:12.5px;
+  padding:8px 0;border-bottom:1px dotted var(--edge);line-height:1.5}
+.rule b{color:var(--accent);font-weight:800;white-space:nowrap}
+.unlock{background:var(--bg);border:1.5px solid var(--accent);border-radius:12px;padding:11px 13px;
+  font-size:12.5px;line-height:1.7;margin:12px 0}
+.fab{position:fixed;right:14px;bottom:14px;background:var(--accent);color:var(--onaccent);border:0;
+  border-radius:99px;padding:15px 24px;font-size:15px;font-weight:800;cursor:pointer;
+  box-shadow:0 6px 22px rgba(0,0,0,.22);z-index:20}
+body.tex-dot .fab{border-radius:0;box-shadow:4px 4px 0 var(--edge)}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:88px;background:var(--panel);
+  color:var(--ink);border:1.5px solid var(--accent);border-radius:14px;padding:11px 16px;
+  font-size:12.5px;z-index:50;max-width:92vw;line-height:1.55;box-shadow:0 6px 24px rgba(0,0,0,.2)}
+.empty{font-size:12px;color:var(--dim);line-height:1.8;padding:6px 2px}
+.err{color:var(--accent);font-size:12px;line-height:1.7;margin-top:10px;font-weight:600}
+.radio{display:flex;align-items:flex-start;gap:8px;padding:8px 0;font-size:13px;line-height:1.5;cursor:pointer}
+.radio input{width:auto;flex:0 0 auto;margin-top:3px}
+.hello{background:var(--bg);border:1.5px solid var(--accent);border-radius:12px;
+  padding:11px 13px;font-size:12.5px;line-height:1.7;margin-bottom:6px}
 </style>
 </head>
 <body>
-<div class="app" id="app"><div class="loading">読み込んでいます…</div></div>
-
+<div id="app"></div>
+<div id="modal"></div>
+<div id="toast"></div>
 <script>
 /* ============================================================
-   ぼうさい女子会｜相談窓口アプリ（公開版・シナリオ型）
-   - フレームワーク不使用。GitHub Pages にそのまま置けます。
-   - 相談の「中身」は knowledge.json 側にあります（コードと分離）。
+   ↓ ① GASのウェブアプリURL
    ============================================================ */
+var GAS_URL = "https://script.google.com/macros/s/AKfycbw_ojRl8ItQbT5y1ajCOjxpMOqiWBzkNsXwUxSPIGQ4JPT5KI94fFahSjO0IwoBekHcWQ/exec";
 
-/* ▼▼▼ 設定は settings.json / design.json にあります（このコードは触らなくて大丈夫） ▼▼▼
-   変えたいときは、同じフォルダの settings.json と design.json を編集してください。
-   読み込みに失敗したときだけ、下の既定値で動きます。 */
-const FILES = { settings: "./settings.json", design: "./design.json" };
-
-const CONFIG = {
-  LOG_ENDPOINT: "",
-  AI_ENDPOINT: "",
-  AI_MODE: "fallback",
-  REQUIRE_ACCOUNT: true,
-  QUICK_EXIT_URL: "https://www.google.com/",
-  KNOWLEDGE_URL: "./knowledge.json"
+/* ============================================================
+   ↓ ② 名前とことば。ここだけ直せば全画面が変わります。
+   ============================================================ */
+var BRAND = {
+  title: "守れてない地図、これからみんなで守る地図",
+  sub:   "ぼうさい女子会",
+  lead:  "災害のとき、みんなが困ることを調べて、地図に置いていく。"
 };
-let SETTINGS = null, DESIGN = null;
 
-/* settings.json / design.json を読み込んで CONFIG に反映 */
-async function loadFiles(){
-  try{
-    SETTINGS = await (await fetch(FILES.settings, { cache:"no-store" })).json();
-    const c = SETTINGS["接続先"] || {}, a = SETTINGS["AIの使い方"] || {}, p = SETTINGS["参加者登録"] || {};
-    if(c["AI中継サーバー"] !== undefined)        CONFIG.AI_ENDPOINT  = c["AI中継サーバー"];
-    if(c["記録先スプレッドシート"] !== undefined) CONFIG.LOG_ENDPOINT = c["記録先スプレッドシート"];
-    if(c["そっと閉じる飛び先"])                  CONFIG.QUICK_EXIT_URL = c["そっと閉じる飛び先"];
-    if(a["範囲"])                                CONFIG.AI_MODE = a["範囲"];
-    if(p["必須にする"] !== undefined)            CONFIG.REQUIRE_ACCOUNT = !!p["必須にする"];
-  }catch(_){ SETTINGS = null; }
-  try{
-    DESIGN = await (await fetch(FILES.design, { cache:"no-store" })).json();
-  }catch(_){ DESIGN = null; }
-}
-
-/* design.json の一覧（読めなければ最小限の既定） */
-const THEMES   = () => (DESIGN && DESIGN["テーマ"] && DESIGN["テーマ"]["一覧"]) || [{ id:"momo", "名前":"ももソーダ", bg:"#FFF0F5", accent:"#FF4F87" }];
-const FONTS    = () => (DESIGN && DESIGN["書体"] && DESIGN["書体"]["一覧"]) || [{ id:"gothic", "名前":"ゴシック", stack:'"Zen Kaku Gothic New",sans-serif' }];
-const TEXTURES = () => (DESIGN && DESIGN["質感"] && DESIGN["質感"]["一覧"]) || [{ id:"flat", "名前":"フラット" }];
-const SIZES    = () => (DESIGN && DESIGN["文字サイズ"] && DESIGN["文字サイズ"]["一覧"]) || [{ id:"m", "名前":"ふつう", "倍率":1 }];
-const WORD     = (k, def) => (DESIGN && DESIGN["画面の言葉"] && DESIGN["画面の言葉"][k]) || def;
-const CONTACTS_LIST = () => (SETTINGS && SETTINGS["相談先"] && SETTINGS["相談先"]["一覧"]) || [];
-/* ▲▲▲ ここまで ▲▲▲ */
-
-/* --- 話し相手の設定（UI・めったに変えない） --- */
-const AGES = [
-  { id:"es", label:"小中学生", teen:true },
-  { id:"hs", label:"高校生", teen:true },
-  { id:"u25", label:"大学生・U25", teen:false },
-  { id:"sh", label:"社会人", teen:false },
-  { id:"pa", label:"保護者・専門家", teen:false }
-];
-const STYLES = [
-  { id:"soft", label:"そっと寄り添ってほしい" },
-  { id:"plain", label:"はっきり教えてほしい" },
-  { id:"together", label:"一緒に考えたい" }
-];
-const DETAILS = [
-  { id:"less", label:"少なめ", n:2 },
-  { id:"normal", label:"ふつう", n:3 },
-  { id:"more", label:"くわしく", n:5 }
-];
-const MBTIS = [
-  { id:"nf", label:"直感・共感型（NF）", style:"soft", detail:"normal" },
-  { id:"nt", label:"分析・計画型（NT）", style:"plain", detail:"more" },
-  { id:"sf", label:"現実・思いやり型（SF）", style:"together", detail:"normal" },
-  { id:"st", label:"実務・堅実型（ST）", style:"plain", detail:"less" }
-];
-/* 登録時に集める属性（最小限）。値はスプレッドシートの「参加者」シートに記録されます。 */
-const GENDERS = [
-  { id:"f", label:"女性" }, { id:"m", label:"男性" },
-  { id:"x", label:"その他" }, { id:"na", label:"答えない" }
-];
-const GREET = {
-  teen:"こんにちは。ここは、なまえを書かなくてもだいじょうぶな場所です。気になっていること、こわいと思っていること、どんなに小さなことでも書いてみてください。",
-  adult:"こんにちは。匿名でご相談いただけます。避難所や日常での不安、困っていることをそのまま書いてください。"
+var SEED = {
+  domains:[{id:"d1",label:"生活環境"},{id:"d2",label:"救援物資"},{id:"d3",label:"心身の健康"},
+    {id:"d4",label:"安全"},{id:"d5",label:"性別役割"},{id:"d6",label:"お金と仕事"},
+    {id:"d7",label:"決める場"},{id:"d8",label:"復興期"}],
+  axes:[{id:"a1",label:"平時"},{id:"a2",label:"直後"},{id:"a3",label:"避難生活"},{id:"a4",label:"復興期"}],
+  stages:[{id:"s1",label:"学齢・思春期"},{id:"s2",label:"就労期"},{id:"s3",label:"妊娠・出産期"},
+    {id:"s4",label:"育児期"},{id:"s5",label:"介護期"},{id:"s6",label:"更年期"},{id:"s7",label:"高齢期"}],
+  situations:[{id:"g1",label:"障害"},{id:"g2",label:"持病"},{id:"g3",label:"単身"},
+    {id:"g4",label:"性的マイノリティ"},{id:"g5",label:"外国籍"},{id:"g6",label:"ケアの担い手"}],
+  themes:[
+    {id:"momo",label:"ももソーダ",bg:"#FFF0F5",accent:"#FF4F87"},
+    {id:"lemon",label:"レモネード",bg:"#FFFBEA",accent:"#FFA400"},
+    {id:"mint",label:"ミントソーダ",bg:"#EBFBF5",accent:"#00C39A"},
+    {id:"lavender",label:"ラベンダー",bg:"#F3F0FF",accent:"#7C5CFF"},
+    {id:"sora",label:"そらいろ",bg:"#EDF6FF",accent:"#2E9BFF"},
+    {id:"neon",label:"ネオン",bg:"#12101C",accent:"#FF57C8"},
+    {id:"yozora",label:"よぞら",bg:"#141A32",accent:"#FFC46B"},
+    {id:"hakuboku",label:"白墨",bg:"#F7F7F5",accent:"#333330"}],
+  fonts:[{id:"maru",label:"丸ゴシック",stack:'"Hiragino Maru Gothic ProN","M PLUS Rounded 1c","Yu Gothic",sans-serif',url:""},
+    {id:"gothic",label:"ゴシック",stack:'"Hiragino Kaku Gothic ProN","Yu Gothic","Noto Sans JP",sans-serif',url:""},
+    {id:"mincho",label:"明朝",stack:'"Hiragino Mincho ProN","Yu Mincho",serif',url:""},
+    {id:"tohaba",label:"等幅",stack:'ui-monospace,Menlo,"Osaka-Mono",monospace',url:""}]
 };
-const READINGS = [
-  ["避難所","避難所（ひなんじょ）"],["生理用品","生理用品（せいりようひん）"],
-  ["衛生用品","衛生用品（えいせいようひん）"],["性暴力","性暴力（せいぼうりょく）"],
-  ["相談","相談（そうだん）"],["支援","支援（しえん）"],["窓口","窓口（まどぐち）"],
-  ["我慢","我慢（がまん）"],["被害","被害（ひがい）"],["記録","記録（きろく）"],
-  ["通報","通報（つうほう）"],["保健師","保健師（ほけんし）"],["運営","運営（うんえい）"],
-  ["医療","医療（いりょう）"],["負担","負担（ふたん）"],["確保","確保（かくほ）"],
-  ["遠慮","えんりょ"],["担当者","担当（たんとう）の人"],["保護者","おうちの人"]
+var TEXTURES={flat:"フラット",dot:"ドット",kougo:"方眼",kami:"紙",sousa:"走査線"};
+var LEVELS=[
+  {lv:1,need:0,  key:"lv.1",title:"しらべる",   unlock:"報告する／AIの見立てを直す"},
+  {lv:2,need:30, key:"lv.2",title:"読み合う",   unlock:"ほかの人のカードにコメントできる"},
+  {lv:3,need:80, key:"lv.3",title:"問いを立てる",unlock:"地図に新しい領域・時期・ライフステージを足せる"},
+  {lv:4,need:160,key:"lv.4",title:"まとめる",   unlock:"マスの要約を書ける"},
+  {lv:5,need:280,key:"lv.5",title:"場をつくる", unlock:"ワークショップを企画・外部で発表できる"}
 ];
-
-/* --- 状態 --- */
-let KB = null;                 // knowledge.json
-let TOPICS = [];               // KB.chunks を正規化したもの
-let CONTACTS = {};             // KB.contacts
-let FALLBACK = null;
-let persona = { age:"hs", style:"soft", detail:"normal", mbti:"" };
-let noHistory = false;
-let log = [];                  // 相談ログ（この端末）
-let msgs = [];                 // チャット表示
-let thinking = false;
-let userId = "";               // ログイン中の参加者ID
-let users = {};                // 端末内の参加者台帳 { id: {hash,gender,age,mbti,createdAt} }
-let loginError = "";           // 登録／ログイン画面のエラー表示
-let reg = { id:"", pw:"", pw2:"", gender:"", ageNum:"", mbti:"" }; // 登録フォームの一時状態
-/* 見た目の設定（参加者ごとに端末内で記憶） */
-let look = { theme:"momo", font:"maru", texture:"flat", size:"m" };
-
-/* ---- 色の自動計算：背景色とアクセント色の2色から、全部の色を作る ---- */
-function hex2rgb(h){ h=String(h).replace("#","");
-  if(h.length===3) h=h[0]+h[0]+h[1]+h[1]+h[2]+h[2];
-  return [parseInt(h.slice(0,2),16),parseInt(h.slice(2,4),16),parseInt(h.slice(4,6),16)]; }
-function rgb2hex(r){ return "#"+r.map(v=>Math.max(0,Math.min(255,Math.round(v))).toString(16).padStart(2,"0")).join(""); }
-function mixc(a,b,t){ const x=hex2rgb(a),y=hex2rgb(b); return rgb2hex([0,1,2].map(i=>x[i]+(y[i]-x[i])*t)); }
-function lum(h){ const c=hex2rgb(h).map(v=>{ v/=255; return v<=.03928? v/12.92 : Math.pow((v+.055)/1.055,2.4); });
-  return .2126*c[0]+.7152*c[1]+.0722*c[2]; }
-function onColor(c){ return lum(c)>0.5 ? "#1A1A1A" : "#FFFFFF"; }
-function rotateHue(h,deg){
-  const c=hex2rgb(h), r=c[0]/255,g=c[1]/255,b=c[2]/255;
-  const mx=Math.max(r,g,b), mn=Math.min(r,g,b), d=mx-mn; let hh=0;
-  if(d){ hh = mx===r ? ((g-b)/d+(g<b?6:0)) : mx===g ? ((b-r)/d+2) : ((r-g)/d+4); hh*=60; }
-  const l=(mx+mn)/2, s=d? d/(1-Math.abs(2*l-1)) : 0;
-  hh=(hh+deg+360)%360;
-  const C=(1-Math.abs(2*l-1))*s, X=C*(1-Math.abs((hh/60)%2-1)), m=l-C/2; let p;
-  if(hh<60)p=[C,X,0]; else if(hh<120)p=[X,C,0]; else if(hh<180)p=[0,C,X];
-  else if(hh<240)p=[0,X,C]; else if(hh<300)p=[X,0,C]; else p=[C,0,X];
-  return rgb2hex([(p[0]+m)*255,(p[1]+m)*255,(p[2]+m)*255]);
-}
-function applyLook(){
-  const t = THEMES().find(x=>x.id===look.theme) || THEMES()[0];
-  const dark = lum(t.bg) < 0.35, far = dark ? "#FFFFFF" : "#000000";
-  const ac = t.accent, ac2 = rotateHue(ac,-40);
-  const P = {
-    "--bg": t.bg,
-    "--panel": mixc(t.bg, far, dark?0.07:0.02),
-    "--ink": mixc(t.bg, far, dark?0.93:0.87),
-    "--ink-2": mixc(t.bg, far, dark?0.72:0.62),
-    "--ink-3": mixc(t.bg, far, 0.45),
-    "--line": mixc(t.bg, far, dark?0.20:0.13),
-    "--accent": ac,
-    "--accent-d": mixc(ac, far, 0.25),
-    "--bot": mixc(t.bg, far, dark?0.10:0.045),
-    "--user": ac,
-    "--warn-bg": mixc(t.bg, ac, 0.10),
-    "--warn-line": mixc(t.bg, ac, 0.28),
-    "--on-accent": onColor(ac),
-    "--accent2": ac2
-  };
-  const r = document.documentElement.style;
-  Object.keys(P).forEach(k => r.setProperty(k, P[k]));
-  const f = FONTS().find(x=>x.id===look.font) || FONTS()[0];
-  r.setProperty("--font", f.stack);
-  const sz = SIZES().find(x=>x.id===look.size) || SIZES()[1] || SIZES()[0];
-  r.setProperty("--scale", String(sz["倍率"] || 1));
-  document.body.className = "tex-" + look.texture;
-}
-function saveLook(){ try{ localStorage.setItem("bgj_look_"+(userId||"_"), JSON.stringify(look)); }catch(_){} }
-function loadLook(){
-  try{ const o=JSON.parse(localStorage.getItem("bgj_look_"+(userId||"_"))||"null"); if(o) look=Object.assign(look,o); }catch(_){}
-}
-// 年齢(数値) → 話し相手の年代バンドへ変換（表示ロジック用。分析には数値の年齢を使います）
-function ageToBand(n){
-  n = parseInt(n,10);
-  if(!(n>0)) return "u25";
-  if(n<=15) return "es";
-  if(n<=18) return "hs";
-  if(n<=25) return "u25";
-  return "sh";
-}
-
-/* --- 便利関数 --- */
-const $ = (sel, root=document) => root.querySelector(sel);
-const el = (tag, attrs={}, kids=[]) => {
-  const n = document.createElement(tag);
-  for (const [k,v] of Object.entries(attrs)){
-    if (k === "class") n.className = v;
-    else if (k === "html") n.innerHTML = v;
-    else if (k.startsWith("on") && typeof v === "function") n.addEventListener(k.slice(2).toLowerCase(), v);
-    else if (v !== null && v !== undefined) n.setAttribute(k, v);
-  }
-  (Array.isArray(kids)?kids:[kids]).forEach(c => c!=null && n.appendChild(typeof c==="string"?document.createTextNode(c):c));
-  return n;
+var POINT_RULES=[
+  ["カードを1枚出す","+10"],["まだ誰もいないマスに最初に置く","+15"],
+  ["1〜2枚しかないマスに足す","+5"],["誰かの「わからない」に答える","+12"],
+  ["自分の「わからない」に誰かが答える","+8"],["AIの見立てを直す","+5"]
+];
+var FILL=["まだ誰も見ていない","1人が見た","何人かで見た","いろんな資料で見た","まとめがある"];
+var REASONS=["本文にその話は出てこない","触れているけど中心じゃない","別のステージと取りちがえてる",
+  "この区分に当てはまらない","その他"];
+var TEXTS={
+  "card.src":{y:"① どこで みた？（URL・いくつでも）",n:"① どこで見た？（URL・複数可）"},
+  "card.srcnote":{y:"かいぎょう・スペース・、 で わけて OK。あとから だれも しらべなおせません。",
+                  n:"改行・スペース・カンマ（、，,）どれで区切ってもOK。出どころは、あとから誰にも復元できません。"},
+  "card.raw":{y:"② しらべたこと（コピペで OK）",n:"② 調べたこと（そのまま貼ってOK）"},
+  "card.q":{y:"③ わからなかったこと（あれば）",n:"③ わからなかったこと（あれば）"}
 };
-/* 年齢から「ことばの段階」を決める（settings.json の「年齢ごとのことば」） */
-function levelOf(){
-  const u = users[userId];
-  const n = u && u.ageNum ? parseInt(u.ageNum,10) : (persona.age==="es"?12:persona.age==="hs"?17:30);
-  const steps = (SETTINGS && SETTINGS["年齢ごとのことば"] && SETTINGS["年齢ごとのことば"]["段階"]) || [];
-  for(const st of steps){ if(n <= (st["上限年齢"]||99)) return st["名前"] || "adult"; }
-  return n<=12 ? "kids" : n<=18 ? "teen" : "adult";
-}
-function greetText(){
-  const g = (DESIGN && DESIGN["あいさつ"]) || {};
-  const lv = levelOf();
-  return g[lv] || (lv==="adult" ? GREET.adult : GREET.teen);
-}
-function readings(){
-  return (DESIGN && DESIGN["ふりがな"] && DESIGN["ふりがな"]["一覧"]) || READINGS;
-}
 
-const isTeen = () => { const a = AGES.find(x=>x.id===persona.age); return !!(a && a.teen); };
-const chipsFor = (contactIds=[]) =>
-  (contactIds||[]).map(id => CONTACTS[id]).filter(Boolean)
-    .map(c => c.number + (c.label ? "（"+c.label+"）" : "")).join("　");
+var mem={};
+var LS={get:function(k){try{return localStorage.getItem(k)}catch(e){return mem[k]||null}},
+        set:function(k,v){try{localStorage.setItem(k,v)}catch(e){mem[k]=v}}};
 
-function teenize(t){
-  const lv = levelOf();
-  if(lv === "adult") return t;      // 大人はそのまま
-  let out = t;
-  readings().forEach(([a,b])=>{ const i=out.indexOf(a); if(i>=0) out = out.slice(0,i)+b+out.slice(i+a.length); });
+var data={domains:SEED.domains,axes:SEED.axes,stages:SEED.stages,situations:SEED.situations,
+  cards:[],summaries:{},echoes:[],themes:SEED.themes,fonts:SEED.fonts,texts:{},fixCounts:{},prefs:{}};
+var me={name:"",theme:"momo",font:"maru",texture:"flat",lang:"n",pass:"",seenGuide:false,customized:false};
+var view={t:"map"};
+var modal=null,flash="",picking=false,loadErr="",loadedFonts={},authed=false,gateErr="",gateBusy=false;
+var prefTimer=null;
+
+/* 呼び名ごとに見た目を覚える（同じ端末で複数人が使っても混ざらない） */
+function prefKey(){return "rfl5_pref_"+encodeURIComponent(me.name||"_")}
+function loadMe(){
+  var r=LS.get("rfl5_me");if(r){try{me=Object.assign(me,JSON.parse(r))}catch(e){}}
+  var u=LS.get("rfl5_gas");if(u)GAS_URL=u;
+  authed=LS.get("rfl5_authed")==="1"&&!!me.name&&!!me.pass;
+  if(me.name) applyLocalPref();
+}
+function applyLocalPref(){
+  var p=LS.get(prefKey());
+  if(p){try{
+    var o=JSON.parse(p);
+    ["theme","font","texture","lang"].forEach(function(k){if(o[k])me[k]=o[k]});
+    if(o.customized)me.customized=true;
+  }catch(e){}}
+}
+function saveMe(){
+  LS.set("rfl5_me",JSON.stringify(me));
+  LS.set(prefKey(),JSON.stringify({theme:me.theme,font:me.font,texture:me.texture,lang:me.lang,customized:me.customized}));
+}
+/* サーバー側が対応していれば、別の端末でも同じ見た目になる（未対応でも静かに無視） */
+function savePrefs(){
+  if(prefTimer)clearTimeout(prefTimer);
+  prefTimer=setTimeout(function(){
+    api("setPrefs",{theme:me.theme,font:me.font,texture:me.texture,lang:me.lang})
+      .catch(function(){});
+  },900);
+}
+function T(k,def){
+  var s=data.texts&&data.texts[k];
+  if(s&&s[me.lang])return s[me.lang];
+  var d=TEXTS[k];if(d)return d[me.lang]||d.n;
+  return def!==undefined?def:k;
+}
+function lvTitle(l){return T(l.key,l.title)}
+
+/* ---------- 出典 ---------- */
+function splitSources(t){
+  var out=[];
+  String(t||"").split(/[\n\r、，,]+/).forEach(function(seg){
+    seg=seg.trim();if(!seg)return;
+    if((seg.match(/https?:\/\//gi)||[]).length>1){seg.split(/\s+/).forEach(function(p){p=p.trim();if(p)out.push(p)})}
+    else out.push(seg);
+  });
   return out;
 }
-
-/* knowledge.json の chunk を、アプリが使う形に正規化 */
-function normalize(kb){
-  CONTACTS = kb.contacts || {};
-  // settings.json に相談先があれば、そちらを優先（1か所で管理できる）
-  const list = CONTACTS_LIST();
-  if(list.length){
-    CONTACTS = {};
-    list.forEach((c,i)=>{ CONTACTS[c.id || ("c"+i)] = { label:c["名前"], number:c["番号"], tel:c["発信先"]||c["番号"] }; });
-  }
-  TOPICS = (kb.chunks || []).map(c => ({
-    id:c.id, label:c.title, kw:c.keywords || [], urgent:!!c.urgent,
-    emp:c.empathy || {}, steps:c.steps || [], contacts:c.contacts || [], body:c.body || ""
-  }));
-  FALLBACK = {
-    id:"general", label:"そのほか",
-    emp:{
-      soft:"書いてくれてありがとう。まだうまく言葉にならない段階でも、ここに置いておいて大丈夫です。",
-      plain:"内容をこちらで特定できませんでした。近い項目を教えていただくと、具体的な案内ができます。",
-      together:"もう少し教えてください。場所、時間帯、誰といるときのことか。そのどれかがわかると絞れます。"
-    },
-    steps:[
-      "困っている場面を、ひとつ言葉にしてみてください。",
-      "うまくまとまらないときは、0120-279-338（よりそいホットライン）で、用件がまとまっていない状態から相談できます。",
-      "急いでいるときは、下の「相談先」ボタンから直接かけてください。"
-    ],
-    contacts:["yori"]
-  };
-}
-
-/* キーワード一致で相談内容を特定（元アプリの match を踏襲） */
-function match(text){
-  const t = String(text||"");
-  let best=null, score=0;
-  TOPICS.forEach(tp=>{
-    let s=0, strong=0;
-    tp.kw.forEach(k=>{ if(t.indexOf(k)>=0){ s+=1; if(k.length>=3) strong+=1; } });
-    if(s===0) return;
-    if(tp.urgent && (strong>0 || s>=2)) s+=2;
-    if(s>score){ score=s; best=tp; }
-  });
-  return best || FALLBACK;
-}
-
-/* 「共感の一文 ＋ 次の行動 ＋ つなぐ窓口」を組み立て */
-function compose(tp){
-  const n = (DETAILS.find(d=>d.id===persona.detail)||DETAILS[1]).n;
-  const emp = teenize(tp.emp[persona.style] || tp.emp.soft || Object.values(tp.emp)[0] || "");
-  const steps = (tp.steps||[]).slice(0,n).map(s=>teenize(s));
-  const head = tp.urgent ? teenize("先に、つながれる窓口を出します。")+"\n\n" : "";
-  const body = steps.length ? "\n\n"+steps.map((s,i)=>(i+1)+". "+s).join("\n\n") : "";
-  return { text:head+emp+body, chips:chipsFor(tp.contacts), topic:tp.id, emp, steps };
-}
-
-/* --- ログ記録：端末保存 ＋（設定時）スプレッドシートへ送信 --- */
-function record(topicId, text){
-  const e = {
-    t: new Date().toISOString(),
-    user: userId,
-    topic: topicId,
-    age: persona.age, style: persona.style, detail: persona.detail, mbti: persona.mbti,
-    text: noHistory ? "" : text
-  };
-  log = [e].concat(log).slice(0,500);
-  try{ localStorage.setItem("bgj_log_v2", JSON.stringify(log)); }catch(_){}
-  if (CONFIG.LOG_ENDPOINT){
+function normUrl(u){
+  var s=String(u||"").trim();if(!s)return "";
+  if(/^https?:\/\//i.test(s)){
     try{
-      fetch(CONFIG.LOG_ENDPOINT, {
-        method:"POST", mode:"no-cors",
-        headers:{ "Content-Type":"text/plain;charset=utf-8" }, // プリフライト回避
-        body: JSON.stringify(Object.assign({ kind:"log" }, e))
-      });
-    }catch(_){}
+      var x=new URL(s);x.hash="";
+      var drop=[];x.searchParams.forEach(function(v,k){if(/^utm_|^(fbclid|gclid|ref|source)$/i.test(k))drop.push(k)});
+      drop.forEach(function(k){x.searchParams.delete(k)});
+      var qs=x.searchParams.toString();
+      return x.host.replace(/^www\./i,"").toLowerCase()+x.pathname.replace(/\/+$/,"")+(qs?"?"+qs:"");
+    }catch(e){}
   }
+  return s.toLowerCase().replace(/\s+/g," ");
+}
+function srcListOf(c){return c.srcs&&c.srcs.length?c.srcs:splitSources(c.src)}
+
+/* ---------- 色 ---------- */
+function hex2rgb(h){h=String(h).replace("#","");if(h.length===3)h=h[0]+h[0]+h[1]+h[1]+h[2]+h[2];
+  return [parseInt(h.slice(0,2),16),parseInt(h.slice(2,4),16),parseInt(h.slice(4,6),16)]}
+function rgb2hex(r){return "#"+r.map(function(v){return Math.max(0,Math.min(255,Math.round(v))).toString(16).padStart(2,"0")}).join("")}
+function mix(a,b,t){var x=hex2rgb(a),y=hex2rgb(b);return rgb2hex([0,1,2].map(function(i){return x[i]+(y[i]-x[i])*t}))}
+function lum(h){var c=hex2rgb(h).map(function(v){v/=255;return v<=.03928?v/12.92:Math.pow((v+.055)/1.055,2.4)});
+  return .2126*c[0]+.7152*c[1]+.0722*c[2]}
+function contrast(a,b){var l1=lum(a),l2=lum(b),hi=Math.max(l1,l2),lo=Math.min(l1,l2);return (hi+.05)/(lo+.05)}
+function onColor(c){return lum(c)>0.5?"#1A1A1A":"#FFFFFF"}
+function rotate(h,deg){
+  var c=hex2rgb(h),r=c[0]/255,g=c[1]/255,b=c[2]/255;
+  var mx=Math.max(r,g,b),mn=Math.min(r,g,b),d=mx-mn,hh=0;
+  if(d){hh=mx===r?((g-b)/d+(g<b?6:0)):mx===g?((b-r)/d+2):((r-g)/d+4);hh*=60}
+  var l=(mx+mn)/2,s=d?d/(1-Math.abs(2*l-1)):0;
+  hh=(hh+deg+360)%360;
+  var C=(1-Math.abs(2*l-1))*s,X=C*(1-Math.abs((hh/60)%2-1)),m=l-C/2,p;
+  if(hh<60)p=[C,X,0];else if(hh<120)p=[X,C,0];else if(hh<180)p=[0,C,X];
+  else if(hh<240)p=[0,X,C];else if(hh<300)p=[X,0,C];else p=[C,0,X];
+  return rgb2hex([(p[0]+m)*255,(p[1]+m)*255,(p[2]+m)*255]);
+}
+function palette(t){
+  var bg=t.bg,ac=t.accent,dark=lum(bg)<0.35,far=dark?"#FFFFFF":"#000000",a2=rotate(ac,-40);
+  return {bg:bg,panel:mix(bg,far,dark?0.07:0.035),ink:mix(bg,far,dark?0.93:0.87),
+    dim:mix(bg,far,0.48),edge:mix(bg,far,dark?0.2:0.13),frontier:mix(bg,far,dark?0.11:0.06),
+    accent:ac,accent2:a2,onaccent:onColor(ac),onaccent2:onColor(a2),onfill:dark?"#FFFFFF":"#000000"};
 }
 
-function exportCsv(){
-  const esc = v => '"' + String(v==null?"":v).replace(/"/g,'""') + '"';
-  const header = ["送信時刻","参加者ID","相談の種類","年代設定","返しの種類","情報量","本文"].map(esc).join(",");
-  const rows = [header].concat(log.map(e=>{
-    const tp = TOPICS.find(x=>x.id===e.topic);
-    return [e.t, e.user||"", tp?tp.label:e.topic, e.age, e.style, e.detail, e.text].map(esc).join(",");
-  }));
-  const blob = new Blob(["\uFEFF"+rows.join("\r\n")], { type:"text/csv;charset=utf-8" });
-  const a = el("a", { href:URL.createObjectURL(blob), download:"bosai-soudan-log.csv" });
-  document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(a.href);
-}
-
-/* --- 画面描画 --- */
-let view = "chat"; // "login" | "setup" | "chat"
-let sheet = null;  // null | "menu" | "feedback" | "contacts"
-
-function render(){
-  const app = $("#app");
-  app.innerHTML = "";
-  if (view === "login")    { app.appendChild(renderLogin()); return; }
-  if (view === "register") { app.appendChild(renderRegister()); return; }
-  if (view === "setup") app.appendChild(renderSetup());
-  else app.appendChild(renderChat());
-  if (sheet) app.appendChild(renderSheet());
-}
-
-/* --- 参加者アカウント（自己登録・端末内でハッシュ照合） --- */
-const inputStyle = "width:100%;border:1px solid var(--line);border-radius:12px;padding:12px;font-size:15px;margin:0 0 10px;background:var(--panel)";
-
-// パスワードは平文で持たず、SHA-256ハッシュにして扱う（スプレッドシートにも送りません）。
-async function hashPass(id, pw){
-  const data = new TextEncoder().encode(id + ":" + pw);
-  const buf = await crypto.subtle.digest("SHA-256", data);
-  return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,"0")).join("");
-}
-function saveUsers(){ try{ localStorage.setItem("bgj_users_v2", JSON.stringify(users)); }catch(_){} }
-function saveCurrent(){ try{ localStorage.setItem("bgj_current_v2", userId||""); }catch(_){} }
-
-function renderLogin(){
-  const wrap = el("div",{class:"setup"});
-  wrap.append(
-    el("h1",{},"ログイン"),
-    el("p",{class:"lead"},"登録したIDとパスワードでログインしてください。はじめての方は下の「新規登録」から。")
-  );
-  if(loginError) wrap.appendChild(el("div",{class:"banner"}, loginError));
-  const idIn = el("input",{type:"text", placeholder:"ID", autocomplete:"username", style:inputStyle});
-  const pwIn = el("input",{type:"password", placeholder:"パスワード", autocomplete:"current-password", style:inputStyle,
-    onKeydown:(e)=>{ if(e.key==="Enter") doLogin(idIn.value, pwIn.value); }});
-  wrap.append(idIn, pwIn);
-  wrap.appendChild(el("button",{class:"primary", onClick:()=>doLogin(idIn.value, pwIn.value)}, "ログイン"));
-  wrap.appendChild(el("button",{class:"ghost", onClick:()=>{ loginError=""; view="register"; render(); }}, "新規登録はこちら"));
-  return wrap;
-}
-
-async function doLogin(id, pass){
-  id = String(id||"").trim(); pass = String(pass||"");
-  if(!id || !pass){ loginError = "IDとパスワードを入力してください。"; render(); return; }
-  const u = users[id];
-  if(!u){ loginError = "このIDは登録されていません。新規登録してください。"; render(); return; }
-  const h = await hashPass(id, pass);
-  if(h !== u.hash){ loginError = "パスワードが違います。"; render(); return; }
-  userId = id; loginError = ""; saveCurrent();
-  loadLook(); applyLook();
-  // 登録属性を話し相手の設定に反映（ログと紐づく）
-  if(u.ageNum) persona.age = ageToBand(u.ageNum);
-  else if(u.age) persona.age = u.age; // 旧アカウント（年代バンド）との後方互換
-  if(u.mbti){ const m = MBTIS.find(x=>x.id===u.mbti); if(m){ persona.mbti=m.id; persona.style=m.style; persona.detail=m.detail; } }
-  persist();
-  msgs = [{ role:"bot", text:greetText() }];
-  view = "chat"; render();
-}
-
-function renderRegister(){
-  const wrap = el("div",{class:"setup"});
-  wrap.append(
-    el("h1",{},"新規登録"),
-    el("p",{class:"lead"},"ご自身で決めたID・パスワードと、かんたんな属性を登録してください。名前・メール・電話番号は登録しません。")
-  );
-  if(loginError) wrap.appendChild(el("div",{class:"banner"}, loginError));
-
-  const idIn = el("input",{type:"text", placeholder:"ID（半角英数字・4文字以上）", autocomplete:"username", value:reg.id,
-    style:inputStyle, onInput:e=>reg.id=e.target.value});
-  const pwIn = el("input",{type:"password", placeholder:"パスワード（4文字以上）", autocomplete:"new-password", value:reg.pw,
-    style:inputStyle, onInput:e=>reg.pw=e.target.value});
-  const pw2In = el("input",{type:"password", placeholder:"パスワード（確認）", autocomplete:"new-password", value:reg.pw2,
-    style:inputStyle, onInput:e=>reg.pw2=e.target.value});
-  wrap.append(field("ID・パスワード", (()=>{ const b=el("div"); b.append(idIn,pwIn,pw2In); return b; })()));
-
-  const pill = (list, key) => {
-    const box = el("div",{class:"opts"});
-    list.forEach(o=>{
-      box.appendChild(el("button",{class:"opt"+(reg[key]===o.id?" on":""),
-        onClick:()=>{ reg[key]=o.id; render(); }}, o.label));
-    });
-    return box;
-  };
-  wrap.append(
-    field("性別", pill(GENDERS,"gender")),
-    field("年齢", el("input",{type:"number", inputmode:"numeric", min:"8", max:"99",
-      placeholder:"例：17", value:reg.ageNum, style:inputStyle,
-      onInput:e=>reg.ageNum=e.target.value}), "半角数字で入力してください（分析に使います）。"),
-    field("性格の傾向", pill(MBTIS,"mbti"), "返しの言葉づかい・長さの初期設定に使います（あとで変更可）。")
-  );
-  wrap.appendChild(el("button",{class:"primary", onClick:doRegister}, "登録してはじめる"));
-  wrap.appendChild(el("button",{class:"ghost", onClick:()=>{ loginError=""; view="login"; render(); }}, "ログインに戻る"));
-  return wrap;
-}
-
-async function doRegister(){
-  const id = String(reg.id||"").trim();
-  loginError = "";
-  if(!/^[A-Za-z0-9_-]{4,}$/.test(id)){ loginError="IDは半角英数字4文字以上で入力してください。"; return render(); }
-  if(users[id]){ loginError="このIDは既に使われています。別のIDにしてください。"; return render(); }
-  if(String(reg.pw).length < 4){ loginError="パスワードは4文字以上にしてください。"; return render(); }
-  if(reg.pw !== reg.pw2){ loginError="確認用パスワードが一致しません。"; return render(); }
-  const ageNum = parseInt(reg.ageNum,10);
-  if(!(ageNum>=8 && ageNum<=99)){ loginError="年齢は半角数字（8〜99）で入力してください。"; return render(); }
-  if(!reg.gender || !reg.mbti){ loginError="性別・性格を選んでください。"; return render(); }
-
-  const hash = await hashPass(id, reg.pw);
-  users[id] = { hash, gender:reg.gender, ageNum:ageNum, mbti:reg.mbti, createdAt:new Date().toISOString() };
-  saveUsers();
-  userId = id; saveCurrent();
-  loadLook(); applyLook();
-
-  // 話し相手の設定に反映（表示ロジックは年代バンド、分析には数値の年齢を使う）
-  persona.age = ageToBand(ageNum);
-  const m = MBTIS.find(x=>x.id===reg.mbti); if(m){ persona.mbti=m.id; persona.style=m.style; persona.detail=m.detail; }
-  persist();
-
-  // 参加者情報をスプレッドシートへ（IDと属性のみ・パスワードは送りません）
-  if(CONFIG.LOG_ENDPOINT){
-    try{ fetch(CONFIG.LOG_ENDPOINT, {
-      method:"POST", mode:"no-cors", headers:{ "Content-Type":"text/plain;charset=utf-8" },
-      body: JSON.stringify({ kind:"register", t:new Date().toISOString(),
-        id, gender:reg.gender, age:ageNum, mbti:reg.mbti })
-    }); }catch(_){}
-  }
-  reg = { id:"", pw:"", pw2:"", gender:"", ageNum:"", mbti:"" };
-  msgs = [{ role:"bot", text:greetText() }];
-  view = "chat"; render();
-}
-
-function logout(){
-  userId = ""; saveCurrent();
-  msgs = []; sheet = null; loginError = "";
-  view = "login"; render();
-}
-
-function renderSetup(){
-  const wrap = el("div",{class:"setup"});
-  wrap.append(
-    el("h1",{},"はじめに、話し相手の設定をします"),
-    el("p",{class:"lead"},"ここで選ぶと、返ってくる言葉づかい・長さ・順番が変わります。あとからいつでも変えられます。名前や連絡先は聞きません。")
-  );
-  const pill = (list, key, extra) => {
-    const box = el("div",{class:"opts"});
-    list.forEach(o=>{
-      const on = persona[key]===o.id;
-      box.appendChild(el("button",{class:"opt"+(on?" on":""), onClick:()=>{
-        persona[key]=o.id; if(extra) extra(o); render();
-      }}, o.label));
-    });
-    return box;
-  };
-  wrap.append(
-    field("あなたは？（年代）", pill(AGES,"age")),
-    field("どんな返しがほしい？", pill(STYLES,"style")),
-    field("情報の量は？", pill(DETAILS,"detail")),
-    field("性格の傾向（任意）", pill(MBTIS,"mbti",(o)=>{ persona.style=o.style; persona.detail=o.detail; }),
-          "選ぶと「返しの種類」と「情報の量」が自動で切り替わります。")
-  );
-  const noHistBox = el("div",{class:"field"});
-  noHistBox.appendChild(el("button",{class:"opt"+(noHistory?" on":""), onClick:()=>{ noHistory=!noHistory; render(); }},
-    noHistory ? "本文を残さない：オン" : "本文を残さない：オフ"));
-  noHistBox.appendChild(el("p",{class:"note"},"オンにすると、書いた文章そのものは記録に残しません（相談の種類だけ数えます）。"));
-  wrap.appendChild(noHistBox);
-
-  wrap.appendChild(el("button",{class:"primary", onClick:startChat}, "この設定ではじめる"));
-  return wrap;
-}
-function field(q, node, note){
-  const f = el("div",{class:"field"});
-  f.appendChild(el("div",{class:"q"}, q));
-  f.appendChild(node);
-  if(note) f.appendChild(el("p",{class:"note"}, note));
-  return f;
-}
-
-function startChat(){
-  persist();
-  if (!msgs.length) msgs = [{ role:"bot", text:greetText() }];
-  view = "chat"; render();
-}
-
-function renderChat(){
-  const root = el("div");
-  // ヘッダー
-  const top = el("div",{class:"top"});
-  top.append(
-    el("span",{class:"avatar"}),
-    (()=>{ const d=el("div"); d.append(el("div",{class:"name"},"相談の窓口"),
-      el("div",{class:"sub"}, noHistory ? "本文は残していません" : "匿名・この端末の中だけに記録")); return d; })(),
-    el("div",{class:"spacer"}),
-    el("button",{class:"iconbtn", onClick:()=>{ sheet="contacts"; render(); }}, WORD("相談先ボタン","相談先")),
-    el("button",{class:"iconbtn", onClick:()=>{ sheet="look"; render(); }}, "色"),
-    el("button",{class:"iconbtn", onClick:()=>{ sheet="menu"; render(); }}, WORD("設定ボタン","設定")),
-    el("button",{class:"exitbtn", title:"すぐに別の画面へ移動します", onClick:quickExit}, WORD("そっと閉じる","そっと閉じる"))
-  );
-  // チャット
-  const scroll = el("div",{class:"scroll", id:"scroll"});
-  msgs.forEach((m, idx)=>{
-    const row = el("div",{class:"msg "+m.role});
-    row.appendChild(el("div",{class:"bubble"}, m.text));
-    scroll.appendChild(row);
-    // 聞き返し：ワンタップの選択肢
-    if(m.options && m.options.length){
-      const box = el("div",{class:"picks"});
-      m.options.forEach(o=>{
-        box.appendChild(el("button",{class:"pick", onClick:()=>chooseScope(idx, o.value, o.label, false)}, o.label));
-      });
-      scroll.appendChild(box);
-    }
-    // 推測した場面を見せる＋「ちがう場面だった」で引き直せる
-    if(m.role==="bot" && m.scopeLabel && !m.options && !m.scopeDone){
-      const line = el("div",{class:"scopeline"});
-      line.appendChild(el("span",{}, "「"+m.scopeLabel+"」として答えました"));
-      line.appendChild(el("button",{class:"redo", onClick:()=>chooseScope(idx, "", "", true)}, "ちがう場面だった"));
-      scroll.appendChild(line);
-    }
-    if(m.chips){
-      const c = el("div",{class:"chips"});
-      m.chips.split("　").filter(Boolean).forEach(txt=>{
-        const num = (txt.match(/[0-9#\-]+/)||[""])[0];
-        c.appendChild(el("a",{class:"chip", href:num?("tel:"+num.replace(/[^0-9#]/g,"")):"#"}, txt));
-      });
-      scroll.appendChild(c);
-    }
+/* ---------- 通信 ---------- */
+function parseRes(r){
+  return r.text().then(function(t){
+    var s=t.trim();
+    if(s.charAt(0)==="<")
+      throw new Error("JSONではなくHTMLが返りました。GASの公開設定が「全員」か、URL末尾が /exec か、スクリプトにエラーがないか確認してください。");
+    try{return JSON.parse(s)}catch(e){throw new Error("返事を読めませんでした")}
   });
-  if(thinking){
-    const t = el("div",{class:"msg bot"});
-    t.appendChild(el("div",{class:"typing", html:"<i></i><i></i><i></i>"}));
-    scroll.appendChild(t);
-  }
-  // 入力
-  const composer = el("div",{class:"composer"});
-  const rowc = el("div",{class:"row"});
-  const ta = el("textarea",{rows:"1", placeholder:"ここに書いてください（名前は不要です）",
-    onInput:(e)=>{ e.target.style.height="auto"; e.target.style.height=Math.min(e.target.scrollHeight,120)+"px"; },
-    onKeydown:(e)=>{ if(e.key==="Enter" && (e.metaKey||e.ctrlKey)){ e.preventDefault(); doSend(ta); } }});
-  const send = el("button",{class:"send", onClick:()=>doSend(ta)}, "送る");
-  rowc.append(ta, send);
-  composer.appendChild(rowc);
-  composer.appendChild(el("p",{class:"hint"}, "命の危険や、いま被害にあっているときは、下の「相談先」から直接つながってください。"));
-
-  root.append(top, scroll, composer);
-  // 描画後に最下部へ
-  setTimeout(()=>{ const s=$("#scroll"); if(s) s.scrollTop = s.scrollHeight; },0);
-  return root;
 }
-
-/* AIの回答に付ける相談先ボタン（相談内容→settings.jsonの既定→よりそい の順） */
-function aiChips(tp){
-  if (tp && tp.contacts && tp.contacts.length) return chipsFor(tp.contacts);
-  const def = (SETTINGS && SETTINGS["相談先"] && SETTINGS["相談先"]["AIの回答にいつも付けるid"]) || [];
-  return chipsFor(def.length ? def : (FALLBACK ? FALLBACK.contacts : []));
+function api(action,payload){
+  if(!GAS_URL)return Promise.reject(new Error("保存先が未設定です"));
+  if(action==="get")
+    return fetch(GAS_URL+"?pass="+encodeURIComponent(me.pass)+"&t="+Date.now()).then(parseRes)
+      .then(function(j){if(j&&j.ok===false)throw new Error(j.error||"読み込めません");return j});
+  return fetch(GAS_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},
+    body:JSON.stringify(Object.assign({action:action,pass:me.pass,author:me.name},payload))})
+    .then(parseRes).then(function(j){if(!j.ok)throw new Error(j.error||"保存に失敗");return j});
 }
-
-/* AI中継サーバーに聞く。extra = { pick, exclude } */
-async function callAI(text, extra){
-  const res = await fetch(CONFIG.AI_ENDPOINT, {
-    method:"POST", headers:{ "Content-Type":"application/json" },
-    body: JSON.stringify(Object.assign({ text, level: levelOf() }, extra||{}))
-  });
-  return await res.json();
-}
-
-/* AIの返事を画面に出す（聞き返し／ふつうの回答の両方） */
-function pushAIReply(data, origText, tp, excludeSoFar){
-  const chips = aiChips(tp);
-  if (data && data.ask && Array.isArray(data.options) && data.options.length){
-    // 聞き返し：ワンタップの選択肢をボタンで出す（相談先ボタンも同時に出す＝待たせない）
-    msgs.push({ role:"bot", text: teenize(String(data.reply||"")), chips,
-                options: data.options, origText, exclude: excludeSoFar||[] });
-    return true;
-  }
-  const reply = data && data.reply ? String(data.reply) : "";
-  if (!reply) return false;
-  msgs.push({ role:"bot", text: teenize(reply), chips,
-              scope: data.scope||"", scopeLabel: data.scopeLabel||"",
-              origText, exclude: excludeSoFar||[] });
+function applyServerPref(){
+  var p=data.prefs&&data.prefs[me.name];
+  if(!p)return false;
+  ["theme","font","texture","lang"].forEach(function(k){if(p[k])me[k]=p[k]});
+  me.customized=true;saveMe();
   return true;
 }
-
-async function doSend(ta){
-  const t = String(ta.value||"").trim();
-  if(!t || thinking) return;
-  msgs.push({ role:"user", text:t });
-  ta.value=""; ta.style.height="auto";
-  const tp = match(t);
-  record(tp.id, t);
-  thinking = true; render();
-
-  // AIを呼ぶか判定（settings.json の「範囲」）。fallback / safe / all
-  let useAI = false;
-  if (CONFIG.AI_ENDPOINT){
-    if (CONFIG.AI_MODE === "all")        useAI = true;
-    else if (CONFIG.AI_MODE === "safe")  useAI = !tp.urgent;
-    else                                 useAI = (tp.id === "general");
-  }
-
-  if (useAI){
-    try{
-      const data = await callAI(t, {});
-      if (pushAIReply(data, t, tp, [])) { thinking = false; render(); return; }
-    }catch(_){ /* 失敗時は下の監修文へ */ }
-  }
-
-  // 監修文の応答
-  setTimeout(()=>{
-    const r = compose(tp);
-    msgs.push({ role:"bot", text:r.text, chips:r.chips });
-    thinking = false; render();
-  }, useAI ? 0 : 560);
+function pull(){
+  return api("get").then(function(j){
+    if(j&&j.domains){
+      ["domains","axes","stages","situations","themes","fonts"].forEach(function(k){if(j[k]&&j[k].length)data[k]=j[k]});
+      data.cards=j.cards||[];data.summaries=j.summaries||{};data.echoes=j.echoes||[];
+      data.texts=j.texts||{};data.fixCounts=j.fixCounts||{};data.prefs=j.prefs||{};
+      LS.set("rfl5_cache",JSON.stringify(data));loadErr="";
+    }
+    render();
+  }).catch(function(e){loadErr=e.message;render()});
 }
 
-/* 聞き返しのボタンを押した／「ちがう場面だった」を押した */
-async function chooseScope(msgIndex, value, label, isRedo){
-  const m = msgs[msgIndex];
-  if (!m || thinking) return;
-  m.options = null;                         // 一度選んだらボタンを消す（二重送信防止）
-  m.scopeDone = true;
-  const tp = match(m.origText);
-  const exclude = (m.exclude||[]).slice();
-  if (isRedo && m.scope) exclude.push(m.scope);   // ちがう場面 → その場面を外して引き直す
-  msgs.push({ role:"user", text: isRedo ? "ちがう場面でした" : label });
-  thinking = true; render();
-  try{
-    const extra = isRedo ? { exclude } : { pick: value, exclude };
-    const data = await callAI(m.origText, extra);
-    if (pushAIReply(data, m.origText, tp, exclude)) { thinking = false; render(); return; }
-  }catch(_){}
-  const r = compose(tp);
-  msgs.push({ role:"bot", text:r.text, chips:r.chips });
-  thinking = false; render();
+/* ---------- 計算 ---------- */
+function at(d,a){return data.cards.filter(function(c){return c.d===d&&c.a===a})}
+function density(cards){
+  var n=cards.length;if(!n)return {s:0,n:0,people:0,srcs:0};
+  var people=new Set(cards.map(function(c){return c.author})).size,set=new Set();
+  cards.forEach(function(c){srcListOf(c).forEach(function(u){var k=normUrl(u);if(k)set.add(k)})});
+  var srcs=set.size,sc=n+people*2+srcs*1.5;
+  return {s:sc>=14?4:sc>=9?3:sc>=5?2:1,n:n,people:people,srcs:srcs};
+}
+function stageCount(cards,id,kind){
+  return cards.filter(function(c){
+    var l=kind==="stage"?(c.stages||[]):(c.situations||[]);
+    if(l.indexOf(id)<0)return false;
+    return !(c.conf==="低"&&!c.fixed);
+  }).length;
+}
+function openQAt(d,a){
+  var ans=new Set(data.cards.map(function(c){return c.answers}).filter(Boolean));
+  return data.cards.filter(function(c){return c.d===d&&c.a===a&&c.q&&!ans.has(c.id)});
+}
+function nudge(z,hasSum){
+  if(z.s===0)return "ここはまだ誰も見ていません。最初の1枚を置くと +15。";
+  if(z.people===1)return "いまは1人だけが見ています。ほかの人が1枚足すと、見え方が変わります。";
+  if(z.srcs<3)return "出どころがあと"+(3-z.srcs)+"件増えると、いろんな資料で確かめた状態になります。";
+  if(!hasSum&&z.s>=3)return "十分たまりました。Lv4の人が要約を書けます。";
+  return "ここは外に出せる材料になっています。";
+}
+function myExp(){
+  if(!me.name)return 0;
+  var mine=data.cards.filter(function(c){return c.author===me.name});
+  var e=mine.reduce(function(s,c){return s+(Number(c.pts)||0)},0);
+  var ids=new Set(mine.map(function(c){return c.id}));
+  e+=data.cards.filter(function(c){return c.answers&&ids.has(c.answers)}).length*8;
+  e+=(data.fixCounts[me.name]||0)*5;
+  return e;
+}
+function myCards(){return data.cards.filter(function(c){return c.author===me.name}).length}
+function myLevel(){var e=myExp(),l=LEVELS[0];LEVELS.forEach(function(x){if(e>=x.need)l=x});return l}
+function labelOf(list,id){var x=list.filter(function(v){return v.id===id})[0];return x?x.label:null}
+function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){
+  return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]})}
+function linkify(u){var s=esc(u);return /^https?:\/\//i.test(u)?'<a href="'+s+'" target="_blank" rel="noopener noreferrer">'+s+'</a>':s}
+function cardById(id){return data.cards.filter(function(c){return c.id===id})[0]}
+function loadFont(f){
+  if(!f.url||loadedFonts[f.id])return;
+  var l=document.createElement("link");l.rel="stylesheet";l.href=f.url;
+  document.head.appendChild(l);loadedFonts[f.id]=true;
+}
+function applyTheme(){
+  var t=data.themes.filter(function(x){return x.id===me.theme})[0]||data.themes[0];
+  var p=palette(t),r=document.documentElement.style;
+  Object.keys(p).forEach(function(k){r.setProperty("--"+k,p[k])});
+  var f=data.fonts.filter(function(x){return x.id===me.font})[0]||data.fonts[0];
+  loadFont(f);r.setProperty("--font",f.stack);
+  document.body.className=(authed?"":"gate ")+"tex-"+me.texture+(picking?" picking":"");
 }
 
-function renderSheet(){
-  const bg = el("div",{class:"sheet-bg", onClick:(e)=>{ if(e.target===bg){ sheet=null; render(); } }});
-  const s = el("div",{class:"sheet"});
-  if(sheet==="menu"){
-    s.append(el("h2",{},"設定"), el("p",{class:"desc"}, (userId?("ログイン中："+userId+"　"):"")+"いつでも変えられます。書いた内容はこの端末の中にあります。"));
-    s.appendChild(rowcard(WORD("見た目を変える","自分色にする"),"色・書体・質感・文字の大きさ","えらぶ",()=>{ sheet="look"; render(); }));
-    s.appendChild(rowcard("話し相手の設定を変える","年代・返しの種類・情報量","変える",()=>{ sheet=null; view="setup"; render(); }));
-    s.appendChild(rowcard("相談ログを書き出す","運営用・記録 "+log.length+"件","CSV",()=>exportCsv()));
-    s.appendChild(rowcard("感想・改善を送る","テスト協力者からの声","書く",()=>{ sheet="feedback"; render(); }));
-    s.appendChild(rowcard("書いたものを今すぐ消す","この端末の記録をすべて削除","消す",clearHistory,true));
-    if(CONFIG.REQUIRE_ACCOUNT) s.appendChild(rowcard("ログアウト","別のIDで入り直す","出る",()=>{ sheet=null; logout(); }));
-  } else if(sheet==="feedback"){
-    s.append(el("h2",{},"感想・改善を送る"),
-      el("p",{class:"desc"}, CONFIG.LOG_ENDPOINT ? "運営に届きます。" : "送信先が未設定のため、いまは端末内に保存されます。"));
-    const ta = el("textarea",{placeholder:"使いにくかったところ、ほしい機能、気になった言葉づかいなど"});
-    s.appendChild(ta);
-    s.appendChild(el("button",{class:"close", onClick:()=>{ sendFeedback(ta.value); sheet=null; render(); }}, "送る"));
-  } else if(sheet==="look"){
-    s.append(el("h2",{}, WORD("見た目を変える","自分色にする")),
-      el("p",{class:"desc"},"色・書体・質感・文字の大きさを選べます。えらんだ見た目は、この端末に覚えます。"));
-    const grp = (title, list, key, styler) => {
-      const f = el("div",{class:"field"});
-      f.appendChild(el("div",{class:"q"}, title));
-      const box = el("div",{class:"opts"});
-      list.forEach(o=>{
-        const on = look[key]===o.id;
-        const b = el("button",{class:"opt"+(on?" on":""), onClick:()=>{
-          look[key]=o.id; saveLook(); applyLook(); render();
-        }}, o["名前"] || o.id);
-        if(styler) styler(b,o,on);
-        box.appendChild(b);
-      });
-      f.appendChild(box);
-      return f;
-    };
-    // 色：ボタン自体をその色で見せる
-    s.appendChild(grp("色", THEMES(), "theme", (b,o,on)=>{
-      b.style.background = o.bg; b.style.color = lum(o.bg)>0.5?"#1A1A1A":"#FFF";
-      b.style.borderColor = on ? o.accent : "var(--line)";
-      b.style.borderWidth = on ? "2px" : "1px";
-      const dot = el("span",{}); dot.style.cssText =
-        "display:inline-block;width:12px;height:12px;border-radius:50%;margin-right:6px;vertical-align:-2px;background:"+o.accent;
-      b.prepend(dot);
-    }));
-    // 書体：ボタン自体をその書体で見せる
-    s.appendChild(grp("書体", FONTS(), "font", (b,o)=>{ b.style.fontFamily = o.stack; }));
-    s.appendChild(grp("質感", TEXTURES(), "texture"));
-    s.appendChild(grp("文字の大きさ", SIZES(), "size"));
-    s.appendChild(el("p",{class:"note"},"色や書体を増やしたいときは、design.json を編集してください（コードは触りません）。"));
-  } else if(sheet==="contacts"){
-    s.append(el("h2",{},"すぐにつながれる相談先"),
-      el("p",{class:"desc"},"ここから直接かけられます。番号をタップしてください。"));
-    Object.values(CONTACTS).forEach(c=>{
-      s.appendChild(rowcard(c.label, c.number, "電話", ()=>{ location.href="tel:"+(c.tel||c.number).replace(/[^0-9#]/g,""); }));
+/* ---------- URL ---------- */
+function route(){
+  var h=location.hash.replace(/^#\/?/,"").split("/");
+  if(h[0]==="cell"&&h[1]&&h[2]) view={t:"cell",d:h[1],a:h[2]};
+  else view={t:"map"};
+  if(authed) render();
+}
+function goCell(d,a){location.hash="#/cell/"+d+"/"+a}
+function goMap(){location.hash="#/"}
+
+/* ---------- 表紙 ---------- */
+function renderGate(){
+  applyTheme();
+  var lit=[1,2,6,8,13,14,15,20];
+  var h='<div class="gatewrap"><div class="gatemap">';
+  for(var i=0;i<24;i++)h+='<i class="'+(lit.indexOf(i)>=0?"on":"")+'"></i>';
+  h+='</div><h1 class="gatetitle">'+esc(BRAND.title)+'</h1>'
+    +'<p class="gatelead">'+esc(BRAND.lead)+'</p>'
+    +'<label>呼び名</label><input id="g_name" maxlength="12" value="'+esc(me.name)+'" placeholder="れい / みなみ / さくら">'
+    +'<label>合言葉</label><input id="g_pass" type="password" value="'+esc(me.pass)+'" placeholder="運営からもらったことば">'
+    +'<div style="margin-top:16px"><button class="primary" style="width:100%" onclick="doEnter()">'
+    +(gateBusy?"たしかめています…":"はじめる")+'</button></div>'
+    +(gateErr?'<p class="err">'+esc(gateErr)+'</p>':'')
+    +'<p class="gatefoot">本名・学校名は書かないでください。呼び名と合言葉は、この端末にだけ保存されます。'
+    +'<br><button onclick="open_(\'setup\')">保存先を設定</button>　<button onclick="open_(\'look\')">見た目を変える</button></p></div>';
+  document.getElementById("app").innerHTML=h;
+  renderModal();
+}
+function doEnter(){
+  var n=((document.getElementById("g_name")||{}).value||"").trim();
+  var p=((document.getElementById("g_pass")||{}).value||"").trim();
+  if(!n){gateErr="呼び名を入れてください。";renderGate();return}
+  if(!p){gateErr="合言葉を入れてください。";renderGate();return}
+  if(!GAS_URL){gateErr="保存先が未設定です。下の「保存先を設定」から入れてください。";renderGate();return}
+  me.name=n;me.pass=p;gateBusy=true;gateErr="";renderGate();
+  applyLocalPref();
+  api("get").then(function(j){
+    gateBusy=false;
+    if(!j||!j.domains){gateErr="うまく読み込めませんでした。";renderGate();return}
+    authed=true;
+    data.prefs=j.prefs||{};
+    applyServerPref();          // 別の端末で設定していれば、それを引き継ぐ
+    saveMe();LS.set("rfl5_authed","1");
+    route();render();
+    if(!me.customized) open_("look",{onboard:true});   // 初回だけ、着せかえから始まる
+    pull();
+  }).catch(function(e){
+    gateBusy=false;gateErr=/合言葉/.test(e.message)?"合言葉がちがいます。":e.message;renderGate();
+  });
+}
+function logout(){authed=false;me.pass="";saveMe();LS.set("rfl5_authed","0");close_();renderGate()}
+
+/* ---------- 画面 ---------- */
+function header(){
+  var lv=myLevel();
+  return '<div class="bar"><div class="brand" onclick="goMap()">'+esc(BRAND.title)
+    +'<small>'+esc(BRAND.sub)+'</small></div><div class="spacer"></div>'
+    +'<button class="ghost" onclick="open_(\'me\')">Lv'+lv.lv+' '+esc(lvTitle(lv))+'</button>'
+    +'<button class="ghost" onclick="open_(\'look\')">自分色</button>'
+    +'<button class="ghost" onclick="pull()">更新</button></div>'
+    +(loadErr?'<p class="err">'+esc(loadErr)+' <button class="ghost" onclick="open_(\'setup\')">設定</button></p>':'');
+}
+
+function render(){
+  if(!authed){renderGate();return}
+  applyTheme();
+  if(view.t==="cell") renderCell(); else renderMap();
+  renderModal();
+}
+
+function renderMap(){
+  var lv=myLevel(),canExpand=lv.lv>=3;
+  var h='<div class="wrap">'+header();
+
+  /* はじめかた */
+  if(myCards()===0||!me.seenGuide){
+    h+='<div class="guide"><h2>はじめかた</h2>'
+      +'<p>ひとマスが「困りごと × 時期」ひとつぶん。気になったマスに、調べたことを貼っていきます。'
+      +'ひとりで全部やる必要はありません◎</p>'
+      +'<div class="steps">'
+      +'<div class="step"><i>1</i><div>気になるマスを1つえらぶ（うすい色のマスほど、まだ誰も見ていません）</div></div>'
+      +'<div class="step"><i>2</i><div>読んだページの<b>URLを貼る</b>。本文はコピペのままでOK。まとめなくて大丈夫</div></div>'
+      +'<div class="step"><i>3</i><div>わからなかったこと・メモを一言残してねっ</div></div>'
+      +'</div><button class="primary" onclick="startPick()">マスをえらぶ</button>'
+      +(myCards()>0?'<div style="text-align:center;margin-top:9px"><button class="guidelink" onclick="hideGuide()">もう出さない</button></div>':'')
+      +'</div>';
+  } else {
+    h+='<p class="empty" style="margin:-4px 0 10px"><button class="guidelink" onclick="showGuide()">つかいかたを見る</button></p>';
+  }
+
+  if(picking) h+='<div class="pickbanner">今日はだれを助けよう？ 地図のマスをえらんでね<button onclick="cancelPick()">やめる</button></div>';
+
+  h+='<div class="boardbox"><div class="grid" style="--ncol:'+(data.axes.length+(canExpand?1:0))+'"><div class="hd"></div>';
+  data.axes.forEach(function(a){h+='<div class="hd">'+esc(a.label)+'</div>'});
+  if(canExpand) h+='<div class="hd">＋</div>';
+  data.domains.forEach(function(d){
+    h+='<div class="rowhd">'+esc(d.label)+'</div>';
+    data.axes.forEach(function(a){
+      var z=density(at(d.id,a.id)),nq=openQAt(d.id,a.id).length;
+      var g='<span class="gauge">';for(var i=1;i<=4;i++)g+='<i class="'+(i<=z.s?"on":"")+'"></i>';g+='</span>';
+      h+='<button class="cell'+(z.s?" f"+z.s:"")+(flash===d.id+a.id?" pulse":"")+'" onclick="tapCell(\''+d.id+'\',\''+a.id+'\')" '
+        +'aria-label="'+esc(d.label+" × "+a.label+"、"+FILL[z.s]+"、カード"+z.n+"枚")+'">'
+        +(nq?'<span class="qmark">❓</span>':'<span class="qmark"></span>')+(z.s?g:'')+'</button>';
     });
+    if(canExpand) h+='<button class="cell new" onclick="open_(\'addAxis\')" aria-label="時期を足す"></button>';
+  });
+  if(canExpand){
+    h+='<div class="rowhd" style="opacity:.5;background:none">＋</div>';
+    data.axes.forEach(function(){h+='<button class="cell new" onclick="open_(\'addDomain\')" aria-label="領域を足す"></button>'});
+    h+='<div></div>';
   }
-  s.appendChild(el("button",{class:"close", onClick:()=>{ sheet=null; render(); }}, "閉じる"));
-  bg.appendChild(s);
-  return bg;
-}
-function rowcard(title, body, action, onClick, danger){
-  const c = el("div",{class:"rowcard"});
-  const d = el("div"); d.append(el("div",{class:"t"},title), el("div",{class:"b"},body));
-  c.append(d, el("div",{class:"sp"}), el("button",{class:danger?"danger":"", onClick}, action));
-  return c;
-}
+  h+='</div><div class="legend">';
+  FILL.forEach(function(s,i){
+    h+='<span><i style="background:'+(i===0?"var(--frontier)":"color-mix(in srgb,var(--accent) "+[0,30,55,78,100][i]+"%,var(--frontier))")+'"></i>'+s+'</span>'});
+  h+='<span>❓ わからないことが残っている</span></div>'
+    +'<div class="note">'+(canExpand?"破線のマスを押すと、新しい領域や時期を自分で足せます。"
+      :"いまの地図は最初の8つだけ。Lv3になると、外側の白紙を自分たちで広げられます。")+'</div></div>';
 
-function sendFeedback(text){
-  const t = String(text||"").trim(); if(!t) return;
-  try{
-    const arr = JSON.parse(localStorage.getItem("bgj_fb_v2")||"[]");
-    arr.unshift({ t:new Date().toISOString(), text:t });
-    localStorage.setItem("bgj_fb_v2", JSON.stringify(arr.slice(0,200)));
-  }catch(_){}
-  if(CONFIG.LOG_ENDPOINT){
-    try{ fetch(CONFIG.LOG_ENDPOINT,{ method:"POST", mode:"no-cors",
-      headers:{ "Content-Type":"text/plain;charset=utf-8" },
-      body: JSON.stringify({ kind:"feedback", t:new Date().toISOString(), text:t }) }); }catch(_){}
+  if(data.echoes.length){
+    h+='<div class="sect" style="margin-top:12px"><div class="secth">外での反響</div>';
+    data.echoes.slice().reverse().slice(0,5).forEach(function(e){
+      h+='<div class="qbox">📣 '+esc(e.what)+'<div class="meta">'+esc(e.where)+'</div></div>'});
+    h+='</div>';
   }
+  h+='<p class="empty" style="margin-top:16px">地図・カード・見立ての直しは、みんなで共有しています。'
+    +'<br><button class="ghost" style="margin-top:8px" onclick="open_(\'setup\')">保存先の設定</button> '
+    +'<button class="ghost" style="margin-top:8px" onclick="logout()">出る</button></p></div>'
+    +'<button class="fab" onclick="startPick()">＋ 報告する</button>';
+  document.getElementById("app").innerHTML=h;
 }
 
-function clearHistory(){
-  if(!confirm("この端末に残っている相談の記録をすべて消します。よろしいですか？")) return;
-  log = []; msgs = [{ role:"bot", text:greetText() }];
-  try{ localStorage.setItem("bgj_log_v2","[]"); }catch(_){}
-  sheet=null; render();
-}
-
-function quickExit(){ try{ location.replace(CONFIG.QUICK_EXIT_URL); }catch(_){ location.href=CONFIG.QUICK_EXIT_URL; } }
-
-function persist(){
-  try{ localStorage.setItem("bgj_app_v2", JSON.stringify({ persona, noHistory })); }catch(_){}
-}
-
-/* --- 起動 --- */
-async function boot(){
-  // ★まず設定ファイルを読む（settings.json / design.json）
-  await loadFiles();
-  loadLook(); applyLook();
-
-  // 保存済み設定を復元
-  try{
-    const s = JSON.parse(localStorage.getItem("bgj_app_v2")||"null");
-    if(s && s.persona){ persona = s.persona; noHistory = !!s.noHistory; }
-    const lg = JSON.parse(localStorage.getItem("bgj_log_v2")||"[]");
-    if(Array.isArray(lg)) log = lg;
-  }catch(_){}
-  // 知識ベース読み込み
-  try{
-    const res = await fetch(CONFIG.KNOWLEDGE_URL, { cache:"no-store" });
-    KB = await res.json();
-    normalize(KB);
-  }catch(err){
-    $("#app").innerHTML = '<div class="loading">知識ベース（knowledge.json）を読み込めませんでした。<br>GitHub Pages 上で index.html と同じ場所に置いてください。</div>';
+function renderCell(){
+  var dL=labelOf(data.domains,view.d),aL=labelOf(data.axes,view.a);
+  if(!dL||!aL){
+    document.getElementById("app").innerHTML='<div class="wrap">'+header()
+      +'<div class="sect"><div class="secth">この場所は見つかりませんでした</div>'
+      +'<p class="sectp">地図が作りかえられて、なくなった可能性があります。</p>'
+      +'<button class="primary" onclick="goMap()">地図にもどる</button></div></div>';
     return;
   }
-  // Esc で即離脱
-  window.addEventListener("keydown", (e)=>{ if(e.key==="Escape") quickExit(); });
+  var cards=at(view.d,view.a),z=density(cards),sum=data.summaries[view.d+"|"+view.a],qs=openQAt(view.d,view.a),lv=myLevel();
+  var h='<div class="wrap">'+header()
+    +'<button class="back" onclick="goMap()">← 地図にもどる</button>'
+    +'<div class="cellhead"><h1>'+esc(dL)+' × '+esc(aL)+'</h1>'
+    +'<div class="meter">';
+  for(var i=1;i<=4;i++)h+='<i class="'+(i<=z.s?"on":"")+'"></i>';
+  h+='</div><p class="state"><b>'+FILL[z.s]+'</b>　カード '+z.n+'枚 ／ '+z.people+'人 ／ 出どころ '+z.srcs+'件<br>'
+    +esc(nudge(z,!!sum))+'</p></div>';
 
-  // 参加者台帳・ログイン状態を復元
-  try{ users = JSON.parse(localStorage.getItem("bgj_users_v2")||"{}") || {}; }catch(_){ users={}; }
-  try{ userId = localStorage.getItem("bgj_current_v2")||""; }catch(_){ userId=""; }
+  h+='<div class="sect"><div class="secth">この場所は、誰の目で見えている？</div>'
+    +'<p class="sectp">集まったカードをAIが読んで、どの人の状況について書かれているかを見立てた結果です。'
+    +'<b>ゼロのところは、この場所についてその人のことがまだ調べられていない</b>ということ。</p>';
+  var mx=1;
+  data.stages.forEach(function(s){mx=Math.max(mx,stageCount(cards,s.id,"stage"))});
+  data.stages.forEach(function(s){
+    var n=stageCount(cards,s.id,"stage");
+    h+='<div class="srow'+(n?"":" zero")+'"><span>'+esc(s.label)+'</span>'
+      +'<div class="b"><i style="width:'+(n?Math.round(n/mx*100):0)+'%"></i></div>'
+      +'<em>'+(n?n+"枚":"まだゼロ")+'</em></div>';
+  });
+  h+='</div><div class="sect"><div class="secth">こういう状況の人については？</div><p class="sectp">同じく、AIの見立てです。</p>';
+  var mx2=1;
+  data.situations.forEach(function(s){mx2=Math.max(mx2,stageCount(cards,s.id,"situation"))});
+  data.situations.forEach(function(s){
+    var n=stageCount(cards,s.id,"situation");
+    h+='<div class="srow'+(n?"":" zero")+'"><span>'+esc(s.label)+'</span>'
+      +'<div class="b"><i style="width:'+(n?Math.round(n/mx2*100):0)+'%"></i></div>'
+      +'<em>'+(n?n+"枚":"まだゼロ")+'</em></div>';
+  });
+  h+='</div>';
 
-  // 参加者登録が必須のとき：未ログインなら登録／ログイン画面へ
-  if (CONFIG.REQUIRE_ACCOUNT){
-    if(!userId || !users[userId]){
-      userId = "";
-      view = Object.keys(users).length ? "login" : "register"; // 台帳が空なら先に登録画面
-      render(); return;
-    }
-    // ログイン済み → 属性を反映してチャットへ
-    const u = users[userId];
-    if(u.ageNum) persona.age = ageToBand(u.ageNum);
-    else if(u.age) persona.age = u.age;
-    if(u.mbti){ const m = MBTIS.find(x=>x.id===u.mbti); if(m){ persona.mbti=m.id; persona.style=m.style; persona.detail=m.detail; } }
-    view = "chat";
-    if(!msgs.length) msgs = [{ role:"bot", text:greetText() }];
-    render(); return;
+  if(qs.length){
+    h+='<div class="sect"><div class="secth">ここに残っている「わからない」</div>'
+      +'<p class="sectp">誰かが調べてくれるのを待っています。</p>';
+    qs.forEach(function(c){
+      h+='<div class="qbox">'+esc(c.q)+'<div class="meta">'+esc(c.author)+'</div>'
+        +(c.author!==me.name?'<button class="take" onclick="openCard(\''+view.d+'\',\''+view.a+'\',\''+c.id+'\')">これ、調べてみる（+12）</button>':'')+'</div>';
+    });
+    h+='</div>';
   }
 
-  // アカウント不要の運用：初回は設定画面、2回目以降はチャットへ
-  const seen = !!localStorage.getItem("bgj_app_v2");
-  view = seen ? "chat" : "setup";
-  if(view==="chat" && !msgs.length) msgs = [{ role:"bot", text:greetText() }];
-  render();
+  if(sum) h+='<div class="sect"><div class="secth">まとめ</div><div class="qbox" style="border-left-color:var(--accent)">'
+    +esc(sum.text)+'<div class="meta">'+esc(sum.by)+'</div></div></div>';
+
+  h+='<div class="sect"><div class="secth">集まっているカード（'+cards.length+'）</div>';
+  if(!cards.length) h+='<p class="sectp">まだ1枚もありません。最初の1枚を置くと +15 です。</p>';
+  cards.forEach(function(c){
+    h+='<div class="card"><p class="raw">'+esc(c.raw)+'</p><ul class="srclist src">';
+    srcListOf(c).forEach(function(u){h+='<li>📎 '+linkify(u)+'</li>'});
+    h+='</ul><p class="src">'+esc(c.author)+'</p>'+judgeHTML(c);
+    (c.comments||[]).forEach(function(cm){h+='<p class="src" style="margin-top:6px">💬 '+esc(cm.by)+'：'+esc(cm.text)+'</p>'});
+    if(lv.lv>=2) h+='<div style="display:flex;gap:6px;margin-top:8px"><input id="cm_'+c.id+'" placeholder="コメント">'
+      +'<button class="take" style="margin-top:0" onclick="doComment(\''+c.id+'\')">送る</button></div>';
+    h+='</div>';
+  });
+  if(lv.lv>=4&&cards.length) h+='<label>このマスをまとめる</label><textarea id="f_sum" rows="4"></textarea>'
+    +'<button class="take" onclick="doSummary()">まとめる</button>';
+  h+='</div></div><button class="fab" onclick="openCard(\''+view.d+'\',\''+view.a+'\',\'\')">＋ 報告する</button>';
+  document.getElementById("app").innerHTML=h;
 }
-boot();
+
+function judgeHTML(c){
+  var st=(c.stages||[]).map(function(i){return labelOf(data.stages,i)}).filter(Boolean);
+  var sg=(c.situations||[]).map(function(i){return labelOf(data.situations,i)}).filter(Boolean);
+  var b=st.length||sg.length?'<b>'+esc(st.concat(sg).join("・"))+'</b>':'<b>あてはまるものなし</b>';
+  return '<div class="judge">🤖 AIの見立て：'+b+(c.conf?'（確信度 '+esc(c.conf)+'）':'')
+    +(c.fixed?' <span class="fixed">✏️ 人が直しました</span>':'')
+    +(c.why?'<span class="why">'+esc(c.why)+'</span>':'')
+    +'<div><button class="take" onclick="open_(\'correct\',{cardId:\''+c.id+'\'})">ちがう気がする</button></div></div>';
+}
+
+function startPick(){picking=true;goMap();render();window.scrollTo({top:0,behavior:"smooth"})}
+function cancelPick(){picking=false;render()}
+function hideGuide(){me.seenGuide=true;saveMe();render()}
+function showGuide(){me.seenGuide=false;saveMe();render();window.scrollTo({top:0,behavior:"smooth"})}
+function tapCell(d,a){if(picking){picking=false;goCell(d,a);setTimeout(function(){openCard(d,a,"")},80);return}goCell(d,a)}
+function open_(t,x){modal=Object.assign({t:t},x||{});renderModal()}
+function close_(){
+  if(modal&&modal.t==="look"&&modal.onboard&&!me.customized){me.customized=true;saveMe();savePrefs()}
+  modal=null;renderModal();
+}
+function finishLook(){
+  me.customized=true;saveMe();savePrefs();
+  var was=modal&&modal.onboard;
+  modal=null;renderModal();
+  if(was) toast("いってらっしゃい、"+me.name+"！　まずは気になるマスを1つえらんでね");
+}
+function openCard(d,a,ans){open_("card",{d:d,a:a,answers:ans||""})}
+function toast(m){document.getElementById("toast").innerHTML='<div class="toast">'+esc(m)+'</div>';
+  setTimeout(function(){document.getElementById("toast").innerHTML=""},5000)}
+function val(id){var e=document.getElementById(id);return e?e.value:""}
+function sheetWrap(b,f){
+  return '<div class="scrim" onclick="if(event.target===this)close_()"><div class="sheet">'
+    +'<div class="sheetbody">'+b+'</div>'+(f?'<div class="sheetfoot">'+f+'</div>':'')+'</div></div>';
+}
+
+function renderModal(){
+  var m=document.getElementById("modal");
+  if(!modal){m.innerHTML="";return}
+  var lv=myLevel(),body="",foot="";
+
+  if(modal.t==="setup"){
+    body='<h3>保存先の設定</h3><p class="sub">運営からもらったウェブアプリURLを入れてください。1回だけです。</p>'
+      +'<label>ウェブアプリURL</label><input id="f_gas" value="'+esc(GAS_URL)+'" placeholder="https://script.google.com/macros/s/.../exec">';
+    foot='<button class="cancel" onclick="close_()">閉じる</button><button class="primary" onclick="doSetup()">保存する</button>';
+  }
+
+  if(modal.t==="card"){
+    body='<h3>'+(modal.answers?"わからないに答える":"調べたことを置く")+'</h3>'
+      +'<p class="sub">'+esc(labelOf(data.domains,modal.d)||"")+' × '+esc(labelOf(data.axes,modal.a)||"")
+      +'<br>整理しなくて大丈夫。読んだところをそのまま貼ってください。</p>'
+      +'<label>'+esc(T("card.src"))+'</label>'
+      +'<textarea id="f_src" rows="3" placeholder="https://example.jp/a&#10;内閣府の報告書 p.32"></textarea>'
+      +'<p class="src" style="margin-top:5px">'+esc(T("card.srcnote"))+'</p><p class="src" id="srcCount"></p>'
+      +'<label>'+esc(T("card.raw"))+'</label><textarea id="f_raw" rows="9"></textarea>'
+      +'<label>'+esc(T("card.q"))+'</label><input id="f_q" placeholder="書くと、地図に❓が残ります">'
+      +'<p class="err" id="cardErr"></p>';
+    foot='<button class="cancel" onclick="close_()">やめる</button><button class="primary" id="btn_submit" onclick="doCard()">地図に置く</button>';
+  }
+
+  if(modal.t==="correct"){
+    var c2=cardById(modal.cardId)||{},cur=(c2.stages||[]).concat(c2.situations||[]);
+    body='<h3>AIの見立てを直す</h3><p class="sub">AIはよく間違えます。直した記録が、AIの見立て方そのものを作りなおす材料になります。</p>'
+      +'<p class="src" style="margin-bottom:10px">'+esc((c2.raw||"").slice(0,120))+'…</p>'
+      +'<label>あてはまるものを選びなおす（複数可・ゼロでもOK）</label><div class="chips">';
+    data.stages.concat(data.situations).forEach(function(s){
+      body+='<button class="chip" id="ck_'+s.id+'" aria-pressed="'+(cur.indexOf(s.id)>=0)+'" onclick="toggleChip(\''+s.id+'\')">'+esc(s.label)+'</button>'});
+    body+='</div><label style="margin-top:14px">なぜ ちがう？</label>';
+    REASONS.forEach(function(r,i){
+      body+='<label class="radio"><input type="radio" name="why" value="'+esc(r)+'" id="why'+i+'">'+esc(r)+'</label>'});
+    body+='<label>ひとこと（「その他」のときは必須）</label><input id="f_note"><p class="err" id="fixErr"></p>';
+    foot='<button class="cancel" onclick="close_()">やめる</button><button class="primary" id="btn_fix" onclick="doCorrect()">直す（+5）</button>';
+  }
+
+  if(modal.t==="addDomain"||modal.t==="addAxis"||modal.t==="addStage"){
+    var k={addDomain:["新しい領域をひらく","最初の8つは、外の資料から借りたものです。ここから先は、あなたたちが見つけた困りごとの名前が入ります。","情報が届かない／ペットと避難"],
+      addAxis:["新しい時期を足す","「平時→復興期」で足りないと思ったら、自分たちの時間軸に組みかえてください。","予兆期／2年後"],
+      addStage:["ライフステージを足す","仮に7つ置いてあるだけ。区切り方そのものを決めなおせます。","受験期／留学中"]}[modal.t];
+    body='<h3>'+k[0]+'</h3><p class="sub">'+k[1]+'</p><label>名前</label><input id="f_label" maxlength="14" placeholder="'+k[2]+'">';
+    foot='<button class="cancel" onclick="close_()">やめる</button><button class="primary" onclick="doAdd(\''+modal.t+'\')">足す</button>';
+  }
+
+  if(modal.t==="me"){
+    var exp=myExp(),next=null;
+    LEVELS.forEach(function(l){if(!next&&l.need>exp)next=l});
+    var pct=next?Math.min(100,Math.round((exp-lv.need)/(next.need-lv.need)*100)):100;
+    body='<h3>Lv'+lv.lv+'　'+esc(lvTitle(lv))+'</h3>'
+      +'<div class="meter"><i class="on" style="flex:'+Math.max(pct,1)+'"></i><i style="flex:'+Math.max(100-pct,1)+'"></i></div>'
+      +'<p class="sub">'+exp+' pt'+(next?'／ Lv'+next.lv+' まで あと '+(next.need-exp)+' pt':'／ いちばん先まで来ました')+'</p>';
+    if(next) body+='<div class="unlock"><b>Lv'+next.lv+' になると</b><br>'+esc(next.unlock)+'</div>';
+    body+='<label>ポイントが入るとき</label>';
+    POINT_RULES.forEach(function(r){body+='<div class="rule"><span>'+esc(r[0])+'</span><b>'+r[1]+'</b></div>'});
+    body+='<p class="src" style="margin-top:10px">レベルはえらい順ではありません。<b>できることが増える鍵</b>です。</p>'
+      +'<label style="margin-top:18px">呼び名</label><input id="f_myname" maxlength="12" value="'+esc(me.name)+'">'
+      +'<label style="margin-top:16px">外での反響を記録する</label>'
+      +'<input id="f_what" placeholder="何が使われたか"><div style="height:6px"></div>'
+      +'<input id="f_where" placeholder="どこで（自治体／学校／取材 など）">'
+      +'<button class="take" onclick="doEcho()">記録する</button>';
+    foot='<button class="cancel" onclick="close_()">閉じる</button><button class="primary" onclick="doMe()">保存する</button>';
+  }
+
+  if(modal.t==="look"){
+    body='<h3>自分色にカスタマイズしようっ！</h3>';
+    if(modal.onboard) body+='<div class="hello">ようこそ、<b>'+esc(me.name)+'</b> さん！<br>'
+      +'まずは見た目を自分好みにしてね。地図の並びはみんな同じだけど、色と書体と質感は自由です。あとからいつでも変えられます。</div>';
+    body+='<p class="sub">えらんだ見た目は <b>'+esc(me.name||"あなた")+'</b> の設定として覚えます。</p>'
+      +'<label>ことば</label><div class="chips">'
+      +'<button class="chip" aria-pressed="'+(me.lang==="y")+'" onclick="pick(\'lang\',\'y\')">やさしい</button>'
+      +'<button class="chip" aria-pressed="'+(me.lang==="n")+'" onclick="pick(\'lang\',\'n\')">ふつう</button></div>'
+      +'<label>色</label><div class="chips">';
+    data.themes.forEach(function(t){
+      var p=palette(t),bad=contrast(p.bg,p.ink)<4.5;
+      body+='<button class="chip'+(bad?" warn":"")+'" aria-pressed="'+(me.theme===t.id)+'" onclick="pick(\'theme\',\''+t.id+'\')" '
+        +'style="background:'+p.bg+';color:'+p.ink+';border-color:'+(me.theme===t.id?p.accent:p.edge)+'">'
+        +'<span class="sw" style="background:'+p.accent+'"></span>'+esc(t.label)+(bad?' ⚠️':'')+'</button>'});
+    body+='</div><label>書体</label><div class="chips">';
+    data.fonts.forEach(function(f){loadFont(f);
+      body+='<button class="chip" aria-pressed="'+(me.font===f.id)+'" style="font-family:'+f.stack+'" onclick="pick(\'font\',\''+f.id+'\')">'+esc(f.label)+'</button>'});
+    body+='</div><label>質感</label><div class="chips">';
+    Object.keys(TEXTURES).forEach(function(k2){
+      body+='<button class="chip" aria-pressed="'+(me.texture===k2)+'" onclick="pick(\'texture\',\''+k2+'\')">'+TEXTURES[k2]+'</button>'});
+    body+='</div><p class="src" style="margin-top:14px">質感はすべてCSSで描いた自前の模様です。既存ゲームの画像・書体は使っていません。</p>';
+    foot='<button class="primary" onclick="finishLook()">'+(modal.onboard?"これで はじめる！":"これでOK")+'</button>';
+  }
+
+  m.innerHTML=sheetWrap(body,foot);
+  var sc=document.getElementById("f_src");
+  if(sc) sc.addEventListener("input",updateSrcCount);
+}
+
+function updateSrcCount(){
+  var el=document.getElementById("srcCount");if(!el)return;
+  var list=splitSources(val("f_src")),u=new Set(list.map(normUrl));u.delete("");
+  el.textContent=list.length?"出どころ "+u.size+"件として数えます":"";
+}
+function pick(k,v){
+  me[k]=v;saveMe();
+  if(authed)savePrefs();
+  if(authed&&!modal)render(); else {applyTheme();renderModal();if(authed)renderCurrent()}
+}
+function renderCurrent(){
+  var keep=modal;modal=null;
+  if(view.t==="cell")renderCell();else renderMap();
+  modal=keep;renderModal();
+}
+function toggleChip(id){var b=document.getElementById("ck_"+id);b.setAttribute("aria-pressed",b.getAttribute("aria-pressed")!=="true")}
+function doSetup(){GAS_URL=val("f_gas").trim();LS.set("rfl5_gas",GAS_URL);close_();authed?pull():renderGate()}
+function doMe(){me.name=val("f_myname").trim()||me.name;saveMe();close_();render()}
+function doCard(){
+  var list=splitSources(val("f_src")),raw=val("f_raw").trim(),err=document.getElementById("cardErr");
+  if(!list.length){err.textContent="①の出どころを入れてください。ここだけは省けません。";return}
+  if(!raw){err.textContent="②に、調べたことを貼ってください。";return}
+  var before=density(at(modal.d,modal.a));
+  var pts=10+(before.s===0?15:before.s<=1?5:0)+(modal.answers?12:0);
+  var b=document.getElementById("btn_submit");b.disabled=true;b.textContent="AIが読んでいます…";err.textContent="";
+  var d=modal.d,a=modal.a;
+  api("addCard",{d:d,a:a,src:list.join("\n"),raw:raw,q:val("f_q").trim(),pts:pts,answers:modal.answers||""})
+    .then(function(j){
+      flash=d+a;setTimeout(function(){flash="";render()},600);
+      var msg=before.s===0?"🗺 "+me.name+" が【"+labelOf(data.domains,d)+" × "+labelOf(data.axes,a)+"】をはじめて塗りました。+"+pts
+                          :labelOf(data.domains,d)+" × "+labelOf(data.axes,a)+" が濃くなりました。+"+pts;
+      if(j.judged===false)msg+="（AIの見立てはあとで入ります）";
+      modal=null;renderModal();toast(msg);return pull();
+    })
+    .catch(function(e){
+      b.disabled=false;b.textContent="地図に置く";
+      err.textContent="送れませんでした（"+e.message+"）。書いた内容は残っています。";
+    });
+}
+function doCorrect(){
+  var after=[],err=document.getElementById("fixErr");
+  data.stages.concat(data.situations).forEach(function(s){
+    var b=document.getElementById("ck_"+s.id);
+    if(b&&b.getAttribute("aria-pressed")==="true")after.push(s.id);
+  });
+  var why=(document.querySelector('input[name="why"]:checked')||{}).value||"",note=val("f_note").trim();
+  if(!why){err.textContent="「なぜ ちがう？」を選んでください。";return}
+  if(why==="その他"&&!note){err.textContent="「その他」のときは、ひとこと書いてください。";return}
+  var b=document.getElementById("btn_fix");b.disabled=true;b.textContent="送っています…";
+  api("addCorrection",{cardId:modal.cardId,after:after,why:why,note:note})
+    .then(function(){modal=null;renderModal();toast("✏️ "+me.name+" がAIの見立てを直しました。+5");return pull()})
+    .catch(function(e){b.disabled=false;b.textContent="直す（+5）";err.textContent="送れませんでした："+e.message});
+}
+function doComment(id){
+  var t=val("cm_"+id).trim();if(!t)return;
+  api("addComment",{cardId:id,text:t}).then(function(){toast("コメントを残しました。");return pull()})
+    .catch(function(e){toast("送れませんでした："+e.message)});
+}
+function doSummary(){
+  var t=val("f_sum").trim();if(!t)return;
+  api("addSummary",{key:view.d+"|"+view.a,text:t}).then(function(){toast("まとめました。");return pull()})
+    .catch(function(e){toast("送れませんでした："+e.message)});
+}
+function doAdd(kind){
+  var v=val("f_label").trim();if(!v)return;
+  api(kind,{label:v}).then(function(){modal=null;renderModal();toast("「"+v+"」が地図に加わりました。名づけたのは "+me.name+"。");return pull()})
+    .catch(function(e){toast("送れませんでした："+e.message)});
+}
+function doEcho(){
+  var w=val("f_what").trim(),r=val("f_where").trim();if(!w||!r)return;
+  api("addEcho",{what:w,where:r}).then(function(){modal=null;renderModal();toast("反響を記録しました。");return pull()})
+    .catch(function(e){toast("送れませんでした："+e.message)});
+}
+
+window.addEventListener("hashchange",route);
+(function(){
+  loadMe();
+  var c=LS.get("rfl5_cache");if(c){try{data=Object.assign(data,JSON.parse(c))}catch(e){}}
+  route();
+  if(authed){render();pull()}else{renderGate()}
+  setInterval(function(){if(authed&&!modal&&!picking)pull()},30000);
+})();
 </script>
 </body>
 </html>
